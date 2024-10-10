@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as THREE from 'three';
-import { createNoise2D, createNoise3D } from 'simplex-noise';
+import { createNoise2D } from 'simplex-noise';
 import { RigidBody } from '@react-three/rapier';
 import Chunk from './Chunk';
-import { getBiome, interpolateBiomes, Biome } from '../systems/biomes';
+import { getBiome, Biome } from '../systems/biomes';
+import { useFrame } from '@react-three/fiber';
 
 interface TerrainProps {
   chunkSize: number;
@@ -32,6 +33,9 @@ const Terrain: React.FC<TerrainProps> = ({
   const temperatureNoise = useRef(createNoise2D());
   const humidityNoise = useRef(createNoise2D());
   const previousPlayerChunk = useRef<{ x: number; z: number } | null>(null);
+  const chunkLoadQueue = useRef<ChunkData[]>([]);
+  const isLoading = useRef(false);
+  const frameCount = useRef(0);
 
   const getChunkKey = useCallback((x: number, z: number): string => {
     return `${Math.floor(x / chunkSize)},${Math.floor(z / chunkSize)}`;
@@ -43,6 +47,27 @@ const Terrain: React.FC<TerrainProps> = ({
     return getBiome(temperature, humidity);
   }, []);
 
+  const loadChunk = useCallback((chunkData: ChunkData) => {
+    return new Promise<void>((resolve) => {
+      // Simulate chunk generation/loading time
+      setTimeout(() => {
+        setLoadedChunks(prevChunks => [...prevChunks, chunkData]);
+        resolve();
+      }, 10); // Adjust this value to simulate different load times
+    });
+  }, []);
+
+  const processChunkQueue = useCallback(async () => {
+    if (isLoading.current || chunkLoadQueue.current.length === 0) return;
+
+    isLoading.current = true;
+    const chunkToLoad = chunkLoadQueue.current.shift();
+    if (chunkToLoad) {
+      await loadChunk(chunkToLoad);
+    }
+    isLoading.current = false;
+  }, [loadChunk]);
+
   const updateChunks = useCallback(() => {
     const playerChunkX = Math.floor(playerPosition.x / chunkSize);
     const playerChunkZ = Math.floor(playerPosition.z / chunkSize);
@@ -53,7 +78,7 @@ const Terrain: React.FC<TerrainProps> = ({
 
     previousPlayerChunk.current = { x: playerChunkX, z: playerChunkZ };
 
-    const newLoadedChunks: ChunkData[] = [];
+    const newChunks: ChunkData[] = [];
     const chunkKeys = new Set<string>();
 
     for (let x = -renderDistance; x <= renderDistance; x++) {
@@ -62,24 +87,35 @@ const Terrain: React.FC<TerrainProps> = ({
         const chunkZ = playerChunkZ + z;
         const key = getChunkKey(chunkX * chunkSize, chunkZ * chunkSize);
 
-        chunkKeys.add(key);
-        newLoadedChunks.push({
-          key,
-          position: [chunkX * chunkSize, 0, chunkZ * chunkSize],
-        });
+        if (!chunkKeys.has(key)) {
+          chunkKeys.add(key);
+          newChunks.push({
+            key,
+            position: [chunkX * chunkSize, 0, chunkZ * chunkSize],
+          });
+        }
       }
     }
 
-    setLoadedChunks(prevChunks => 
-      prevChunks.filter(chunk => chunkKeys.has(chunk.key))
-        .concat(newLoadedChunks.filter(chunk => !prevChunks.some(prevChunk => prevChunk.key === chunk.key)))
-    );
-
+    setLoadedChunks(prevChunks => {
+      const keptChunks = prevChunks.filter(chunk => chunkKeys.has(chunk.key));
+      const chunksToAdd = newChunks.filter(chunk => !prevChunks.some(prevChunk => prevChunk.key === chunk.key));
+      chunkLoadQueue.current.push(...chunksToAdd);
+      return keptChunks;
+    });
   }, [playerPosition, chunkSize, renderDistance, getChunkKey]);
 
-  useEffect(() => {
-    updateChunks();
-  }, [updateChunks]);
+  useFrame(() => {
+    frameCount.current += 1;
+    
+    // Only check for updates every 10 frames
+    if (frameCount.current % 10 === 0) {
+      updateChunks();
+    }
+    
+    // Process chunk queue every frame
+    processChunkQueue();
+  });
 
   return (
     <>

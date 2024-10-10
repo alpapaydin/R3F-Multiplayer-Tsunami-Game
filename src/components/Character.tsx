@@ -1,4 +1,4 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RigidBody, useRapier, RapierRigidBody, vec3 } from '@react-three/rapier';
@@ -7,7 +7,6 @@ import { useCameraControls } from './CameraControls';
 import { ShaderMaterial } from 'three';
 import { vertexShader, fragmentShader } from '../shaders/PlayerShader';
 
-const CHARACTER_FORCE = 500;
 const CHARACTER_RADIUS = 1;
 const JUMP_FORCE = 5;
 const MAX_VELOCITY = 100;
@@ -36,28 +35,29 @@ const Character: React.FC<CharacterProps> = ({ onPositionUpdate }) => {
     const jumpRay = useMemo(() => new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }), [rapier]);
     const jumpDirection = useMemo(() => vec3({ x: 0, y: JUMP_FORCE, z: 0 }), []);
     const characterPosition = useMemo(() => new THREE.Vector3(), []);
+    const targetVelocity = useMemo(() => new THREE.Vector3(), []);
 
     useFrame((_, delta) => {
         if (!isLocked || !rigidBodyRef.current) return;
         const rigidBody = rigidBodyRef.current;
 
-        // Movement
-        const impulse = { x: 0, y: 0, z: 0 };
-        if (keys.w) impulse.z -= CHARACTER_FORCE * delta;
-        if (keys.s) impulse.z += CHARACTER_FORCE * delta;
-        if (keys.a) impulse.x -= CHARACTER_FORCE * delta;
-        if (keys.d) impulse.x += CHARACTER_FORCE * delta;
+        // Calculate target velocity
+        targetVelocity.set(0, 0, 0);
+        if (keys.w) targetVelocity.z -= 1;
+        if (keys.s) targetVelocity.z += 1;
+        if (keys.a) targetVelocity.x -= 1;
+        if (keys.d) targetVelocity.x += 1;
+        targetVelocity.normalize().multiplyScalar(MAX_VELOCITY);
+        targetVelocity.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation.y);
 
-        const rotatedImpulse = new THREE.Vector3(impulse.x, 0, impulse.z).applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation.y);
-        rigidBody.applyImpulse(vec3(rotatedImpulse), true);
-
-        // Velocity limiting
-        const velocity = rigidBody.linvel();
-        const horizontalVelocity = Math.sqrt(velocity.x ** 2 + velocity.z ** 2);
-        if (horizontalVelocity > MAX_VELOCITY) {
-            const scale = MAX_VELOCITY / horizontalVelocity;
-            rigidBody.setLinvel({ x: velocity.x * scale, y: velocity.y, z: velocity.z * scale }, true);
-        }
+        // Smoothly interpolate current velocity to target velocity
+        const currentVelocity = rigidBody.linvel();
+        const newVelocity = new THREE.Vector3(
+            THREE.MathUtils.lerp(currentVelocity.x, targetVelocity.x, delta * 5),
+            currentVelocity.y,
+            THREE.MathUtils.lerp(currentVelocity.z, targetVelocity.z, delta * 5)
+        );
+        rigidBody.setLinvel(vec3(newVelocity), true);
 
         // Jumping
         if (keys.space) {

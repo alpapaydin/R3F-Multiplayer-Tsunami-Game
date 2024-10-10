@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 const MOUSE_SENSITIVITY = 0.002;
 const MAX_POLAR_ANGLE = Math.PI * 0.4;
+const SMOOTHING_FACTOR = 0.1;
 
 interface Rotation {
     x: number;
@@ -14,6 +15,10 @@ export const useCameraControls = () => {
     const { camera, gl } = useThree();
     const [rotation, setRotation] = useState<Rotation>({ x: 0, y: 0 });
     const [isLocked, setIsLocked] = useState(false);
+    const targetPosition = useRef(new THREE.Vector3());
+    const targetLookAt = useRef(new THREE.Vector3());
+    const currentPosition = useRef(new THREE.Vector3());
+    const currentLookAt = useRef(new THREE.Vector3());
 
     const handleMouseMove = useCallback((event: MouseEvent) => {
         if (!isLocked) return;
@@ -67,17 +72,22 @@ export const useCameraControls = () => {
     const updateCamera = useCallback((characterPosition: THREE.Vector3) => {
         const cameraOffset = new THREE.Vector3(0, 5, 10);
         cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation.y);
-        camera.position.copy(characterPosition).add(cameraOffset);
+        targetPosition.current.copy(characterPosition).add(cameraOffset);
 
         const forward = new THREE.Vector3(-Math.sin(rotation.y), 0, -Math.cos(rotation.y));
-        const lookAtPoint = new THREE.Vector3();
-        lookAtPoint.copy(characterPosition);
-        lookAtPoint.y += Math.sin(rotation.x) * 10;
-        lookAtPoint.add(forward.multiplyScalar(Math.cos(rotation.x) * 10));
+        targetLookAt.current.copy(characterPosition);
+        targetLookAt.current.y += Math.sin(rotation.x) * 10;
+        targetLookAt.current.add(forward.multiplyScalar(Math.cos(rotation.x) * 10));
+    }, [rotation]);
 
-        camera.lookAt(lookAtPoint);
+    useFrame(() => {
+        currentPosition.current.lerp(targetPosition.current, SMOOTHING_FACTOR);
+        currentLookAt.current.lerp(targetLookAt.current, SMOOTHING_FACTOR);
+
+        camera.position.copy(currentPosition.current);
+        camera.lookAt(currentLookAt.current);
         camera.up.set(0, 1, 0);
-    }, [camera, rotation]);
+    });
 
     return { rotation, updateCamera, isLocked };
 };
