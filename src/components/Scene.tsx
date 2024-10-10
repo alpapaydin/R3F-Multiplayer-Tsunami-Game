@@ -31,13 +31,12 @@ const Scene: React.FC = () => {
       />
       <Physics gravity={[0, -9.81, 0]}>
         <Terrain 
-          worldSize={128}
-          chunkSize={32}
+          chunkSize={64}
           chunkResolution={64}
-          heightScale={2}
-          noiseScale={0.2}
+          heightScale={5}
+          noiseScale={0.1}
           playerPosition={playerPosition}
-          renderDistance={1}
+          renderDistance={2}
         />
         <Character onPositionUpdate={handlePositionUpdate} />
       </Physics>

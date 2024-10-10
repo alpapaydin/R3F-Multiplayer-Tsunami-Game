@@ -5,7 +5,6 @@ import { RigidBody } from '@react-three/rapier';
 import Chunk from './Chunk';
 
 interface TerrainProps {
-  worldSize: number;
   chunkSize: number;
   chunkResolution: number;
   heightScale: number;
@@ -20,7 +19,6 @@ interface ChunkData {
 }
 
 const Terrain: React.FC<TerrainProps> = ({
-  worldSize,
   chunkSize,
   chunkResolution,
   heightScale,
@@ -56,13 +54,11 @@ const Terrain: React.FC<TerrainProps> = ({
         const chunkZ = playerChunkZ + z;
         const key = getChunkKey(chunkX * chunkSize, chunkZ * chunkSize);
 
-        if (chunkX >= 0 && chunkX < worldSize / chunkSize && chunkZ >= 0 && chunkZ < worldSize / chunkSize) {
-          chunkKeys.add(key);
-          newLoadedChunks.push({
-            key,
-            position: [chunkX * chunkSize, 0, chunkZ * chunkSize],
-          });
-        }
+        chunkKeys.add(key);
+        newLoadedChunks.push({
+          key,
+          position: [chunkX * chunkSize, 0, chunkZ * chunkSize],
+        });
       }
     }
 
@@ -72,7 +68,7 @@ const Terrain: React.FC<TerrainProps> = ({
         .concat(newLoadedChunks.filter(chunk => !prevChunks.some(prevChunk => prevChunk.key === chunk.key)))
     );
 
-  }, [playerPosition, chunkSize, renderDistance, worldSize, getChunkKey]);
+  }, [playerPosition, chunkSize, renderDistance, getChunkKey]);
 
   useEffect(() => {
     updateChunks();
