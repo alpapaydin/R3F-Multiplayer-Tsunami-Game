@@ -6,12 +6,21 @@ import Terrain from './Terrain';
 import Character from './Character';
 import * as THREE from 'three';
 
-interface SceneProps {
-  socket: WebSocket | null; // WebSocket for receiving updates
-  playerId: string | null;  // Player ID assigned by the server
+interface Player {
+  position: {
+    x: number;
+    y: number;
+    z: number;
+  };
 }
 
-const Scene: React.FC<SceneProps> = ({ socket, playerId }) => {
+interface SceneProps {
+  socket: WebSocket | null;
+  playerId: string | null;
+  mapSeed: number | null;
+}
+
+const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed }) => {
   const [playerPosition, setPlayerPosition] = useState(new THREE.Vector3(0, 50, 0));
   const [otherPlayers, setOtherPlayers] = useState<{ [key: string]: THREE.Vector3 }>({});
 
@@ -41,6 +50,20 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId }) => {
             return updatedPlayers;
           });
         }
+
+        if (data.type === 'REGISTER') {
+          // Initialize the other players on initial connection
+          const players: { [key: string]: Player } = data.players; // Type players properly
+          const newPlayers: { [key: string]: THREE.Vector3 } = {};
+          Object.keys(players).forEach((id) => {
+            newPlayers[id] = new THREE.Vector3(
+              players[id].position.x,
+              players[id].position.y,
+              players[id].position.z
+            );
+          });
+          setOtherPlayers(newPlayers);
+        }
       };
     }
   }, [socket, playerId]);
@@ -62,14 +85,18 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId }) => {
         shadow-camera-bottom={-10}
       />
       <Physics gravity={[0, -9.81, 0]}>
-        <Terrain 
-          chunkSize={64}
-          chunkResolution={64}
-          heightScale={5}
-          noiseScale={0.1}
-          playerPosition={playerPosition}
-          renderDistance={2}
-        />
+      {mapSeed && (
+          <Terrain 
+            chunkSize={64}
+            chunkResolution={64}
+            heightScale={5}
+            noiseScale={0.1}
+            playerPosition={playerPosition}
+            renderDistance={2}
+            mapSeed={mapSeed} // Ensure mapSeed is passed correctly
+          />
+        )}
+
         {/* Main player */}
         <Character 
           onPositionUpdate={handlePositionUpdate} 

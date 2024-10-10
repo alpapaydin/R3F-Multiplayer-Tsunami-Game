@@ -11,17 +11,19 @@ const App: React.FC = () => {
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [playerSkin, setPlayerSkin] = useState<string | null>(null);
   const [isPlayerSpawned, setIsPlayerSpawned] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false); // New state to track if the player pressed play
+  const [hasStarted, setHasStarted] = useState(false);
+  const [mapSeed, setMapSeed] = useState<number | null>(null); // New state for map seed
 
   const handleConnected = (socket: WebSocket) => {
     setSocket(socket);
     setConnected(true);
 
-    // Listen for registration message
+    // Listen for registration message and map seed
     socket.onmessage = (message) => {
       const data = JSON.parse(message.data);
       if (data.type === 'REGISTER') {
         setPlayerId(data.id);
+        setMapSeed(data.mapSeed); // Store the map seed
       }
     };
   };
@@ -29,7 +31,7 @@ const App: React.FC = () => {
   const handlePlay = (name: string, skin: string) => {
     setPlayerName(name);
     setPlayerSkin(skin);
-    setHasStarted(true); // Hide the overlay when "Play" is pressed
+    setHasStarted(true);
 
     // Notify server about player spawn
     if (socket && playerId) {
@@ -42,7 +44,7 @@ const App: React.FC = () => {
 
       setTimeout(() => {
         setIsPlayerSpawned(true);
-      }, 1000); // Optional spawn delay for UI purposes
+      }, 1000);
     }
   };
 
@@ -56,9 +58,9 @@ const App: React.FC = () => {
             playerSkin={playerSkin ?? "default"}
             socket={socket}
             playerId={playerId}
+            mapSeed={mapSeed} // Pass map seed to MainGame
           />
 
-          {/* Show the overlay until "Play" is pressed, then hide it */}
           {!hasStarted && <UserInputOverlay onPlay={handlePlay} />}
         </>
       )}

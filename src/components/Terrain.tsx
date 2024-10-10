@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { RigidBody } from '@react-three/rapier';
 import Chunk from './Chunk';
 import { getBiome, Biome } from '../systems/biomes';
 import { useFrame } from '@react-three/fiber';
+import alea from 'alea';
 
 interface TerrainProps {
   chunkSize: number;
@@ -13,6 +14,7 @@ interface TerrainProps {
   noiseScale: number;
   playerPosition: THREE.Vector3;
   renderDistance: number;
+  mapSeed: number; // New prop for map seed
 }
 
 interface ChunkData {
@@ -27,11 +29,15 @@ const Terrain: React.FC<TerrainProps> = ({
   noiseScale,
   playerPosition,
   renderDistance,
+  mapSeed,
 }) => {
   const [loadedChunks, setLoadedChunks] = useState<ChunkData[]>([]);
-  const heightNoise = useRef(createNoise2D());
-  const temperatureNoise = useRef(createNoise2D());
-  const humidityNoise = useRef(createNoise2D());
+  const prng = useMemo(() => alea(mapSeed), [mapSeed]);
+
+  // Create noise functions using the seeded PRNG
+  const heightNoise = useRef(createNoise2D(prng));       // Terrain height noise
+  const temperatureNoise = useRef(createNoise2D(prng));  // Temperature noise
+  const humidityNoise = useRef(createNoise2D(prng));     // Humidity noise
   const previousPlayerChunk = useRef<{ x: number; z: number } | null>(null);
   const chunkLoadQueue = useRef<ChunkData[]>([]);
   const isLoading = useRef(false);
