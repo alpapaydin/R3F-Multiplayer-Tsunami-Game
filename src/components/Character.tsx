@@ -1,7 +1,7 @@
 import React, { useRef, useMemo, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { RigidBody, useRapier, RapierRigidBody, vec3 } from '@react-three/rapier';
+import { RigidBody, useRapier, RapierRigidBody, vec3, useAfterPhysicsStep } from '@react-three/rapier';
 import { useKeyboard } from '../hooks/useKeyboard';
 import { useCameraControls } from './CameraControls';
 import { ShaderMaterial } from 'three';
@@ -40,7 +40,7 @@ const Character: React.FC<CharacterProps> = ({ onPositionUpdate, socket, playerI
     const targetVelocity = useMemo(() => new THREE.Vector3(), []);
 
     useFrame((_, delta) => {
-        if (!isLocked || !rigidBodyRef.current) return;
+        if (!rigidBodyRef.current) return;
         const rigidBody = rigidBodyRef.current;
 
         // Calculate target velocity
@@ -72,7 +72,6 @@ const Character: React.FC<CharacterProps> = ({ onPositionUpdate, socket, playerI
                 rigidBody.applyImpulse(jumpDirection, true);
             }
         }
-
         // Update position and camera
         const translation = rigidBody.translation();
         characterPosition.set(translation.x, translation.y, translation.z);
