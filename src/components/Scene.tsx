@@ -1,6 +1,6 @@
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Physics, Debug } from '@react-three/cannon';
+import { Physics } from '@react-three/rapier';
 import { Sky } from '@react-three/drei';
 import Terrain from './Terrain';
 import Character from './Character';
@@ -24,17 +24,15 @@ const Scene: React.FC = () => {
       />
       <Physics 
         gravity={[0, -9.81, 0]}
-        defaultContactMaterial={{
-          friction: 0.1,
-          restitution: 0.1,
-          contactEquationStiffness: 1e8,
-          contactEquationRelaxation: 3,
-        }}
       >
-        <Debug color="black" scale={1.0}>
-          <Terrain size={100} divisions={128} height={5} />
-          <Character />
-        </Debug>
+        <Terrain 
+        worldSize={128}
+        chunkSize={32}
+        chunkResolution={64}
+        heightScale={2}
+        noiseScale={0.2}
+        />
+        <Character />
       </Physics>
     </Canvas>
   );

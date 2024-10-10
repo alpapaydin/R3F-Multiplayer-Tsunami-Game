@@ -1,86 +1,74 @@
 import React, { useMemo } from 'react';
-import { useHeightfield } from '@react-three/cannon';
-import { BufferGeometry, Float32BufferAttribute } from 'three';
+import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
-import { Group } from 'three';
+import { RigidBody } from '@react-three/rapier';
 
-const noise2D = createNoise2D();
+interface TerrainProps {
+  worldSize: number;
+  chunkSize: number;
+  chunkResolution: number;
+  heightScale: number;
+  noiseScale: number;
+}
 
-const Terrain: React.FC<{ size?: number; divisions?: number; height?: number }> = ({ 
-  size = 100, 
-  divisions = 128, 
-  height = 5 
+const Terrain: React.FC<TerrainProps> = ({
+  worldSize,
+  chunkSize,
+  chunkResolution,
+  heightScale,
+  noiseScale,
 }) => {
-  const heights = useMemo(() => {
-    const data: number[][] = [];
-    for (let i = 0; i < divisions; i++) {
-      const row: number[] = [];
-      for (let j = 0; j < divisions; j++) {
-        const x = (i / divisions) * size;
-        const y = (j / divisions) * size;
-        row.push((noise2D(x * 0.02, y * 0.02) + 1) * 0.5 * height);
-      }
-      data.push(row);
-    }
-    return data;
-  }, [size, divisions, height]);
+  const noise2D = useMemo(() => createNoise2D(), []);
 
-  const [ref] = useHeightfield(() => ({
-    args: [
-      heights,
-      {
-        elementSize: size / divisions,
-      },
-    ],
-    position: [size / 2, 0, -size / 2],
-    rotation: [-Math.PI / 2, 0, -Math.PI],
-    material: {
-      friction: 0.5,
-      restitution: 0.1,
-    },
-  }), undefined, [heights, size, divisions, height]);
+  const chunks = useMemo(() => {
+    const chunksCount = Math.floor(worldSize / chunkSize);
+    const chunkArray = [];
 
-  const geometry = useMemo(() => {
-    const geo = new BufferGeometry();
-    const vertices: number[] = [];
-    const indices: number[] = [];
+    for (let i = 0; i < chunksCount; i++) {
+      for (let j = 0; j < chunksCount; j++) {
+        const chunkX = i * chunkSize;
+        const chunkZ = j * chunkSize;
 
-    for (let i = 0; i < divisions; i++) {
-      for (let j = 0; j < divisions; j++) {
-        const x = (i / (divisions - 1)) * size - size / 2;
-        const z = (j / (divisions - 1)) * size - size / 2;
-        const y = heights[i][j];
-        vertices.push(x, y, z);
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        const indices = [];
 
-        if (i < divisions - 1 && j < divisions - 1) {
-          const a = i * divisions + j;
-          const b = i * divisions + j + 1;
-          const c = (i + 1) * divisions + j;
-          const d = (i + 1) * divisions + j + 1;
-          indices.push(a, b, d);
-          indices.push(a, d, c);
+        for (let x = 0; x <= chunkResolution; x++) {
+          for (let z = 0; z <= chunkResolution; z++) {
+            const xPos = chunkX + (x / chunkResolution) * chunkSize;
+            const zPos = chunkZ + (z / chunkResolution) * chunkSize;
+            const height = (noise2D(xPos * noiseScale, zPos * noiseScale) + 1) * 0.5 * heightScale;
+
+            vertices.push(xPos, height, zPos);
+
+            if (x < chunkResolution && z < chunkResolution) {
+              const a = x * (chunkResolution + 1) + z;
+              const b = x * (chunkResolution + 1) + z + 1;
+              const c = (x + 1) * (chunkResolution + 1) + z;
+              const d = (x + 1) * (chunkResolution + 1) + z + 1;
+              indices.push(a, b, d, a, d, c);
+            }
+          }
         }
+
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        geometry.setIndex(indices);
+        geometry.computeVertexNormals();
+
+        chunkArray.push(
+          <RigidBody type="fixed" colliders="trimesh" key={`chunk-${i}-${j}`}>
+            <mesh geometry={geometry}>
+              <meshStandardMaterial color="green" />
+            </mesh>
+          </RigidBody>
+        );
       }
     }
 
-    geo.setAttribute('position', new Float32BufferAttribute(vertices, 3));
-    geo.setIndex(indices);
-    geo.computeVertexNormals();
-    return geo;
-  }, [heights, size, divisions, height]);
+    return chunkArray;
+  }, [worldSize, chunkSize, chunkResolution, heightScale, noiseScale, noise2D]);
 
-  return (
-    <>
-      {/* Invisible collision mesh */}
-      <group ref={ref as React.RefObject<Group>} />
-      
-      {/* Visible terrain mesh */}
-      <mesh receiveShadow>
-        <primitive object={geometry} />
-        <meshStandardMaterial color="green" wireframe />
-      </mesh>
-    </>
-  );
+  return <>{chunks}</>;
 };
 
 export default Terrain;
