@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { BufferGeometry, Float32BufferAttribute, MeshStandardMaterial } from 'three';
-import { createNoise2D } from 'simplex-noise';
 
 interface ChunkProps {
   position: [number, number, number];
@@ -8,11 +7,10 @@ interface ChunkProps {
   resolution: number;
   heightScale: number;
   noiseScale: number;
+  noise2D: (x: number, y: number) => number;
 }
 
-const Chunk: React.FC<ChunkProps> = ({ position, size, resolution, heightScale, noiseScale }) => {
-  const noise2D = useMemo(() => createNoise2D(), []);
-
+const Chunk: React.FC<ChunkProps> = ({ position, size, resolution, heightScale, noiseScale, noise2D }) => {
   const geometry = useMemo(() => {
     const geo = new BufferGeometry();
     const vertices: number[] = [];

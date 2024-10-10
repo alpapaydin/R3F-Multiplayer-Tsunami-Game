@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { RigidBody } from '@react-three/rapier';
+import Chunk from './Chunk';
 
 interface TerrainProps {
   worldSize: number;
@@ -9,6 +10,13 @@ interface TerrainProps {
   chunkResolution: number;
   heightScale: number;
   noiseScale: number;
+  playerPosition: THREE.Vector3;
+  renderDistance: number;
+}
+
+interface ChunkData {
+  key: string;
+  position: [number, number, number];
 }
 
 const Terrain: React.FC<TerrainProps> = ({
@@ -17,58 +25,75 @@ const Terrain: React.FC<TerrainProps> = ({
   chunkResolution,
   heightScale,
   noiseScale,
+  playerPosition,
+  renderDistance,
 }) => {
-  const noise2D = useMemo(() => createNoise2D(), []);
+  const [loadedChunks, setLoadedChunks] = useState<ChunkData[]>([]);
+  const noise2D = useRef(createNoise2D());
+  const previousPlayerChunk = useRef<{ x: number; z: number } | null>(null);
 
-  const chunks = useMemo(() => {
-    const chunksCount = Math.floor(worldSize / chunkSize);
-    const chunkArray = [];
+  const getChunkKey = useCallback((x: number, z: number): string => {
+    return `${Math.floor(x / chunkSize)},${Math.floor(z / chunkSize)}`;
+  }, [chunkSize]);
 
-    for (let i = 0; i < chunksCount; i++) {
-      for (let j = 0; j < chunksCount; j++) {
-        const chunkX = i * chunkSize;
-        const chunkZ = j * chunkSize;
+  const updateChunks = useCallback(() => {
+    const playerChunkX = Math.floor(playerPosition.x / chunkSize);
+    const playerChunkZ = Math.floor(playerPosition.z / chunkSize);
 
-        const geometry = new THREE.BufferGeometry();
-        const vertices = [];
-        const indices = [];
+    // Check if the player has moved to a new chunk
+    if (previousPlayerChunk.current?.x === playerChunkX && previousPlayerChunk.current?.z === playerChunkZ) {
+      return; // Player hasn't moved to a new chunk, no need to update
+    }
 
-        for (let x = 0; x <= chunkResolution; x++) {
-          for (let z = 0; z <= chunkResolution; z++) {
-            const xPos = chunkX + (x / chunkResolution) * chunkSize;
-            const zPos = chunkZ + (z / chunkResolution) * chunkSize;
-            const height = (noise2D(xPos * noiseScale, zPos * noiseScale) + 1) * 0.5 * heightScale;
+    previousPlayerChunk.current = { x: playerChunkX, z: playerChunkZ };
 
-            vertices.push(xPos, height, zPos);
+    const newLoadedChunks: ChunkData[] = [];
+    const chunkKeys = new Set<string>();
 
-            if (x < chunkResolution && z < chunkResolution) {
-              const a = x * (chunkResolution + 1) + z;
-              const b = x * (chunkResolution + 1) + z + 1;
-              const c = (x + 1) * (chunkResolution + 1) + z;
-              const d = (x + 1) * (chunkResolution + 1) + z + 1;
-              indices.push(a, b, d, a, d, c);
-            }
-          }
+    for (let x = -renderDistance; x <= renderDistance; x++) {
+      for (let z = -renderDistance; z <= renderDistance; z++) {
+        const chunkX = playerChunkX + x;
+        const chunkZ = playerChunkZ + z;
+        const key = getChunkKey(chunkX * chunkSize, chunkZ * chunkSize);
+
+        if (chunkX >= 0 && chunkX < worldSize / chunkSize && chunkZ >= 0 && chunkZ < worldSize / chunkSize) {
+          chunkKeys.add(key);
+          newLoadedChunks.push({
+            key,
+            position: [chunkX * chunkSize, 0, chunkZ * chunkSize],
+          });
         }
-
-        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        geometry.setIndex(indices);
-        geometry.computeVertexNormals();
-
-        chunkArray.push(
-          <RigidBody type="fixed" colliders="trimesh" key={`chunk-${i}-${j}`}>
-            <mesh geometry={geometry}>
-              <meshStandardMaterial color="green" />
-            </mesh>
-          </RigidBody>
-        );
       }
     }
 
-    return chunkArray;
-  }, [worldSize, chunkSize, chunkResolution, heightScale, noiseScale, noise2D]);
+    // Remove chunks that are no longer in range
+    setLoadedChunks(prevChunks => 
+      prevChunks.filter(chunk => chunkKeys.has(chunk.key))
+        .concat(newLoadedChunks.filter(chunk => !prevChunks.some(prevChunk => prevChunk.key === chunk.key)))
+    );
 
-  return <>{chunks}</>;
+  }, [playerPosition, chunkSize, renderDistance, worldSize, getChunkKey]);
+
+  useEffect(() => {
+    updateChunks();
+  }, [updateChunks]);
+
+  return (
+    <>
+      {loadedChunks.map(chunk => (
+        <RigidBody type="fixed" colliders="trimesh" key={chunk.key}>
+          <Chunk
+            position={chunk.position}
+            size={chunkSize}
+            resolution={chunkResolution}
+            heightScale={heightScale}
+            noiseScale={noiseScale}
+            noise2D={noise2D.current}
+          />
+        </RigidBody>
+      ))}
+    </>
+  );
 };
 
 export default Terrain;

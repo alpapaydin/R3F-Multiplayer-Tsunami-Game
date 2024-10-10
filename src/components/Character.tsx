@@ -12,7 +12,11 @@ const CHARACTER_RADIUS = 1;
 const JUMP_FORCE = 5;
 const MAX_VELOCITY = 10;
 
-const Character: React.FC = () => {
+interface CharacterProps {
+  onPositionUpdate: (position: THREE.Vector3) => void;
+}
+
+const Character: React.FC<CharacterProps> = ({ onPositionUpdate }) => {
     const rigidBodyRef = useRef<RapierRigidBody>(null);
     const meshRef = useRef<THREE.Mesh>(null);
     const keys = useKeyboard();
@@ -67,10 +71,11 @@ const Character: React.FC = () => {
             }
         }
 
-        // Update camera
+        // Update position and camera
         const translation = rigidBody.translation();
         characterPosition.set(translation.x, translation.y, translation.z);
         updateCamera(characterPosition);
+        onPositionUpdate(characterPosition);
 
         // Update shader time
         shaderMaterial.uniforms.time.value += delta;
