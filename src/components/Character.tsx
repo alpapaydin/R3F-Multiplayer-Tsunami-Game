@@ -10,7 +10,7 @@ import { vertexShader, fragmentShader } from '../shaders/PlayerShader';
 const CHARACTER_FORCE = 500;
 const CHARACTER_RADIUS = 1;
 const JUMP_FORCE = 5;
-const MAX_VELOCITY = 10;
+const MAX_VELOCITY = 100;
 
 interface CharacterProps {
   onPositionUpdate: (position: THREE.Vector3) => void;
