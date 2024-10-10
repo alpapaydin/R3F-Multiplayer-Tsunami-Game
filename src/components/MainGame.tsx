@@ -6,15 +6,16 @@ interface MainGameProps {
   playerSkin: string;
   socket: WebSocket | null;
   playerId: string | null;
-  mapSeed: number | null; // Map seed passed from the server
+  mapSeed: number | null;
 }
 
-const MainGame: React.FC<MainGameProps> = ({ socket, playerId, mapSeed }) => {
+const MainGame: React.FC<MainGameProps> = ({ socket, playerId, mapSeed , playerName}) => {
   return (
-    <Scene 
+    <Scene
+      playerName={playerName}
       socket={socket}
       playerId={playerId}
-      mapSeed={mapSeed} // Pass map seed to Scene
+      mapSeed={mapSeed}
     />
   );
 };

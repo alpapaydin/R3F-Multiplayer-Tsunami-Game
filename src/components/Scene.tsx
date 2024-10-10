@@ -3,8 +3,16 @@ import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { Sky } from '@react-three/drei';
 import Terrain from './Terrain';
-import Character from './Character';
+import PlayerCharacter from './Character/PlayerCharacter';
+import BaseCharacter from './Character/BaseCharacter';
 import * as THREE from 'three';
+import {CHUNK_SIZE,
+        CHUNK_RES,
+        HEIGHT_SCALE,
+        NOISE_SCALE,
+        RENDER_DISTANCE,
+      } from '../constants';
+
 
 interface Player {
   position: {
@@ -18,9 +26,10 @@ interface SceneProps {
   socket: WebSocket | null;
   playerId: string | null;
   mapSeed: number | null;
+  playerName: string | null;
 }
 
-const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed }) => {
+const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName }) => {
   const [playerPosition, setPlayerPosition] = useState(new THREE.Vector3(0, 50, 0));
   const [otherPlayers, setOtherPlayers] = useState<{ [key: string]: THREE.Vector3 }>({});
 
@@ -74,7 +83,7 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed }) => {
       <ambientLight intensity={0.3} />
       <directionalLight 
         position={[10, 10, 10]} 
-        intensity={1.5} 
+        intensity={1.5}
         castShadow 
         shadow-mapSize-width={2048} 
         shadow-mapSize-height={2048} 
@@ -87,29 +96,33 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed }) => {
       <Physics gravity={[0, -9.81, 0]}>
       {mapSeed && (
           <Terrain 
-            chunkSize={64}
-            chunkResolution={64}
-            heightScale={5}
-            noiseScale={0.1}
+            chunkSize={CHUNK_SIZE}
+            chunkResolution={CHUNK_RES}
+            heightScale={HEIGHT_SCALE}
+            noiseScale={NOISE_SCALE}
             playerPosition={playerPosition}
-            renderDistance={2}
+            renderDistance={RENDER_DISTANCE}
             mapSeed={mapSeed} // Ensure mapSeed is passed correctly
           />
         )}
 
         {/* Main player */}
-        <Character 
+        <PlayerCharacter
+          characterRadius = {1}
           onPositionUpdate={handlePositionUpdate} 
           socket={socket}
           playerId={playerId}
+          playerName={playerName}
         />
         
         {/* Render other players */}
         {Object.keys(otherPlayers).map((id) => (
-          <mesh key={id} position={otherPlayers[id].toArray()}>
-            <sphereGeometry args={[1, 32, 32]} />
-            <meshStandardMaterial color="red" />
-          </mesh>
+          <BaseCharacter
+            characterRadius = {1}
+            playerName="Babalar"
+            playerId={id}
+            position={otherPlayers[id].toArray()}
+          />
         ))}
       </Physics>
     </Canvas>

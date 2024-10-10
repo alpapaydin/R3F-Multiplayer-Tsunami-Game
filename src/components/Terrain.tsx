@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { RigidBody } from '@react-three/rapier';
@@ -57,7 +57,13 @@ const Terrain: React.FC<TerrainProps> = ({
     return new Promise<void>((resolve) => {
       // Simulate chunk generation/loading time
       setTimeout(() => {
-        setLoadedChunks(prevChunks => [...prevChunks, chunkData]);
+        setLoadedChunks(prevChunks => {
+          // Prevent duplicate chunks with the same key
+          if (!prevChunks.some(chunk => chunk.key === chunkData.key)) {
+            return [...prevChunks, chunkData];
+          }
+          return prevChunks;
+        });
         resolve();
       }, 10); // Adjust this value to simulate different load times
     });
@@ -85,7 +91,7 @@ const Terrain: React.FC<TerrainProps> = ({
     previousPlayerChunk.current = { x: playerChunkX, z: playerChunkZ };
 
     const newChunks: ChunkData[] = [];
-    const chunkKeys = new Set<string>();
+    const chunkKeys = new Set<string>(loadedChunks.map(chunk => chunk.key)); // Use loadedChunks for existing keys
 
     for (let x = -renderDistance; x <= renderDistance; x++) {
       for (let z = -renderDistance; z <= renderDistance; z++) {
@@ -93,6 +99,7 @@ const Terrain: React.FC<TerrainProps> = ({
         const chunkZ = playerChunkZ + z;
         const key = getChunkKey(chunkX * chunkSize, chunkZ * chunkSize);
 
+        // Only add chunks that are not already loaded
         if (!chunkKeys.has(key)) {
           chunkKeys.add(key);
           newChunks.push({
@@ -104,21 +111,26 @@ const Terrain: React.FC<TerrainProps> = ({
     }
 
     setLoadedChunks(prevChunks => {
-      const keptChunks = prevChunks.filter(chunk => chunkKeys.has(chunk.key));
+      const keptChunks = prevChunks.filter(chunk => {
+        const [chunkX, chunkZ] = chunk.key.split(',').map(Number);
+        const withinRenderDistance = Math.abs(chunkX - playerChunkX) <= renderDistance && Math.abs(chunkZ - playerChunkZ) <= renderDistance;
+        return withinRenderDistance;
+      });
+
       const chunksToAdd = newChunks.filter(chunk => !prevChunks.some(prevChunk => prevChunk.key === chunk.key));
       chunkLoadQueue.current.push(...chunksToAdd);
       return keptChunks;
     });
-  }, [playerPosition, chunkSize, renderDistance, getChunkKey]);
+  }, [playerPosition, chunkSize, renderDistance, getChunkKey, loadedChunks]);
 
   useFrame(() => {
     frameCount.current += 1;
-    
+
     // Only check for updates every 10 frames
     if (frameCount.current % 10 === 0) {
       updateChunks();
     }
-    
+
     // Process chunk queue every frame
     processChunkQueue();
   });

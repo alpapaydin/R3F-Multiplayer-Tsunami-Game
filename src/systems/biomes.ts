@@ -12,7 +12,7 @@ export const Biomes: Record<string, Biome> = {
   PLAINS: {
     name: 'Plains',
     color: new Color(0x7cfc00),
-    heightMultiplier: 1,
+    heightMultiplier: 0.5,
     roughness: 0.5,
   },
   MOUNTAINS: {

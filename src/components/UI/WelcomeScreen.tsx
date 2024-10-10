@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import {WS_URL} from '../../constants';
 import './WelcomeScreen.css';
 
 interface WelcomeScreenProps {
@@ -15,7 +16,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConnected }) => {
     }, 500);
 
     const connectToServer = () => {
-      const socket = new WebSocket('ws://localhost:8080');
+      const socket = new WebSocket(WS_URL);
       
       socket.onopen = () => {
         setIsConnecting(false);
