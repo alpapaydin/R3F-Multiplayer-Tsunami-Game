@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useEffect } from 'react';
+import React, { useRef, useMemo, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RigidBody, useRapier, RapierRigidBody, vec3 } from '@react-three/rapier';
@@ -13,9 +13,11 @@ const MAX_VELOCITY = 100;
 
 interface CharacterProps {
   onPositionUpdate: (position: THREE.Vector3) => void;
+  socket: WebSocket | null; // WebSocket for sending data to the server
+  playerId: string | null;  // Player ID assigned by the server
 }
 
-const Character: React.FC<CharacterProps> = ({ onPositionUpdate }) => {
+const Character: React.FC<CharacterProps> = ({ onPositionUpdate, socket, playerId }) => {
     const rigidBodyRef = useRef<RapierRigidBody>(null);
     const meshRef = useRef<THREE.Mesh>(null);
     const keys = useKeyboard();
@@ -76,6 +78,15 @@ const Character: React.FC<CharacterProps> = ({ onPositionUpdate }) => {
         characterPosition.set(translation.x, translation.y, translation.z);
         updateCamera(characterPosition);
         onPositionUpdate(characterPosition);
+
+        // Send position update to server via WebSocket
+        if (socket && playerId) {
+            socket.send(JSON.stringify({
+                type: 'POSITION_UPDATE',
+                id: playerId,
+                position: { x: characterPosition.x, y: characterPosition.y, z: characterPosition.z }
+            }));
+        }
 
         // Update shader time
         shaderMaterial.uniforms.time.value += delta;

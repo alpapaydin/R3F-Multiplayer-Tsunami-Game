@@ -4,11 +4,16 @@ import Scene from './Scene';
 interface MainGameProps {
   playerName: string;
   playerSkin: string;
+  socket: WebSocket | null; // WebSocket connection
+  playerId: string | null;  // Player ID assigned by server
 }
 
-const MainGame: React.FC<MainGameProps> = () => {
+const MainGame: React.FC<MainGameProps> = ({ socket, playerId }) => {
   return (
-    <Scene />
+    <Scene 
+      socket={socket}
+      playerId={playerId}
+    />
   );
 };
 

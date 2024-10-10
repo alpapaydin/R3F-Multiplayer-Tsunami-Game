@@ -6,22 +6,44 @@ import './App.css';
 
 const App: React.FC = () => {
   const [connected, setConnected] = useState(false);
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [playerId, setPlayerId] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [playerSkin, setPlayerSkin] = useState<string | null>(null);
   const [isPlayerSpawned, setIsPlayerSpawned] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false); // New state to track if the player pressed play
 
-  const handleConnected = () => {
+  const handleConnected = (socket: WebSocket) => {
+    setSocket(socket);
     setConnected(true);
+
+    // Listen for registration message
+    socket.onmessage = (message) => {
+      const data = JSON.parse(message.data);
+      if (data.type === 'REGISTER') {
+        setPlayerId(data.id);
+      }
+    };
   };
 
   const handlePlay = (name: string, skin: string) => {
     setPlayerName(name);
     setPlayerSkin(skin);
+    setHasStarted(true); // Hide the overlay when "Play" is pressed
 
-    // Simulate player spawn delay
-    setTimeout(() => {
-      setIsPlayerSpawned(true);
-    }, 1000);
+    // Notify server about player spawn
+    if (socket && playerId) {
+      socket.send(JSON.stringify({
+        type: 'SPAWN_PLAYER',
+        id: playerId,
+        name: name,
+        skin: skin
+      }));
+
+      setTimeout(() => {
+        setIsPlayerSpawned(true);
+      }, 1000); // Optional spawn delay for UI purposes
+    }
   };
 
   return (
@@ -29,13 +51,15 @@ const App: React.FC = () => {
       {!connected && <WelcomeScreen onConnected={handleConnected} />}
       {connected && (
         <>
-          {/* Only show the game scene after the connection is made */}
-          <MainGame playerName={playerName ?? "Player"} playerSkin={playerSkin ?? "default"} />
+          <MainGame 
+            playerName={playerName ?? "Player"} 
+            playerSkin={playerSkin ?? "default"}
+            socket={socket}
+            playerId={playerId}
+          />
 
-          {/* Show the overlay until the player is spawned */}
-          {!isPlayerSpawned && (
-            <UserInputOverlay onPlay={handlePlay} />
-          )}
+          {/* Show the overlay until "Play" is pressed, then hide it */}
+          {!hasStarted && <UserInputOverlay onPlay={handlePlay} />}
         </>
       )}
     </div>
