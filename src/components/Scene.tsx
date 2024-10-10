@@ -32,7 +32,7 @@ const Scene: React.FC = () => {
       <Physics gravity={[0, -9.81, 0]}>
         <Terrain 
           chunkSize={64}
-          chunkResolution={64}
+          chunkResolution={32}
           heightScale={5}
           noiseScale={0.1}
           playerPosition={playerPosition}

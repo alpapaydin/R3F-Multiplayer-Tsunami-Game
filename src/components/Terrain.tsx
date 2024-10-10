@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import * as THREE from 'three';
-import { createNoise2D } from 'simplex-noise';
+import { createNoise2D, createNoise3D } from 'simplex-noise';
 import { RigidBody } from '@react-three/rapier';
 import Chunk from './Chunk';
+import { getBiome, interpolateBiomes, Biome } from '../systems/biomes';
 
 interface TerrainProps {
   chunkSize: number;
@@ -27,20 +28,27 @@ const Terrain: React.FC<TerrainProps> = ({
   renderDistance,
 }) => {
   const [loadedChunks, setLoadedChunks] = useState<ChunkData[]>([]);
-  const noise2D = useRef(createNoise2D());
+  const heightNoise = useRef(createNoise2D());
+  const temperatureNoise = useRef(createNoise2D());
+  const humidityNoise = useRef(createNoise2D());
   const previousPlayerChunk = useRef<{ x: number; z: number } | null>(null);
 
   const getChunkKey = useCallback((x: number, z: number): string => {
     return `${Math.floor(x / chunkSize)},${Math.floor(z / chunkSize)}`;
   }, [chunkSize]);
 
+  const getBiomeAt = useCallback((x: number, z: number): Biome => {
+    const temperature = (temperatureNoise.current(x * 0.001, z * 0.001) + 1) * 0.5;
+    const humidity = (humidityNoise.current(x * 0.001, z * 0.001) + 1) * 0.5;
+    return getBiome(temperature, humidity);
+  }, []);
+
   const updateChunks = useCallback(() => {
     const playerChunkX = Math.floor(playerPosition.x / chunkSize);
     const playerChunkZ = Math.floor(playerPosition.z / chunkSize);
 
-    // Check if the player has moved to a new chunk
     if (previousPlayerChunk.current?.x === playerChunkX && previousPlayerChunk.current?.z === playerChunkZ) {
-      return; // Player hasn't moved to a new chunk, no need to update
+      return;
     }
 
     previousPlayerChunk.current = { x: playerChunkX, z: playerChunkZ };
@@ -62,7 +70,6 @@ const Terrain: React.FC<TerrainProps> = ({
       }
     }
 
-    // Remove chunks that are no longer in range
     setLoadedChunks(prevChunks => 
       prevChunks.filter(chunk => chunkKeys.has(chunk.key))
         .concat(newLoadedChunks.filter(chunk => !prevChunks.some(prevChunk => prevChunk.key === chunk.key)))
@@ -84,7 +91,8 @@ const Terrain: React.FC<TerrainProps> = ({
             resolution={chunkResolution}
             heightScale={heightScale}
             noiseScale={noiseScale}
-            noise2D={noise2D.current}
+            heightNoise={heightNoise.current}
+            getBiomeAt={getBiomeAt}
           />
         </RigidBody>
       ))}
