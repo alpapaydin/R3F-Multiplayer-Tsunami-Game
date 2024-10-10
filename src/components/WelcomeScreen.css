@@ -1,0 +1,11 @@
+.welcome-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #282c34;
+    color: white;
+    font-size: 2rem;
+    font-family: sans-serif;
+  }
+  
