@@ -1,7 +1,7 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { RigidBody, RapierRigidBody, CollisionEnterPayload, CollisionExitPayload } from '@react-three/rapier';
+import { RigidBody, RapierRigidBody, CollisionEnterPayload, CollisionExitPayload, interactionGroups } from '@react-three/rapier';
 import { Vector3, ShaderMaterial } from 'three';
 import NameTag from '../UI/NameTag';
 import { vertexShader, fragmentShader } from '../../shaders/PlayerShader';
@@ -55,6 +55,7 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
     return (
         <>
             <RigidBody
+                collisionGroups={interactionGroups(1,2)}
                 ref={ref}
                 colliders="ball"
                 gravityScale={5}

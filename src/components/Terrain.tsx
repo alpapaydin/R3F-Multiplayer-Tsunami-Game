@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
-import { RigidBody } from '@react-three/rapier';
+import { RigidBody, interactionGroups } from '@react-three/rapier';
 import Chunk from './Chunk';
 import { getBiome, Biome } from '../systems/biomes';
 import { useFrame } from '@react-three/fiber';
@@ -138,7 +138,12 @@ const Terrain: React.FC<TerrainProps> = ({
   return (
     <>
       {loadedChunks.map(chunk => (
-        <RigidBody type="fixed" colliders="trimesh" key={chunk.key}>
+        <RigidBody
+          type="fixed"
+          colliders="trimesh"
+          key={chunk.key}
+          collisionGroups={interactionGroups(2, 1)}
+          >
           <Chunk
             position={chunk.position}
             size={chunkSize}

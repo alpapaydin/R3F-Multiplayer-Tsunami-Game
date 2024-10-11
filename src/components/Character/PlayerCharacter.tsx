@@ -1,13 +1,13 @@
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { vec3, useRapier, CollisionEnterPayload, CollisionExitPayload } from '@react-three/rapier';
+import { vec3, useRapier, CollisionEnterPayload, CollisionExitPayload, interactionGroups } from '@react-three/rapier';
 import { useKeyboard } from '../../hooks/useKeyboard';
 import { useCameraControls } from '../CameraControls';
 import { RapierRigidBody } from '@react-three/rapier';
 import BaseCharacter from './BaseCharacter';
 
-const JUMP_FORCE = 50;
+const JUMP_FORCE = 100;
 const MAX_VELOCITY = 20;
 
 interface PlayerCharacterProps {
@@ -42,6 +42,9 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
     const characterVelocity = useMemo(() => new THREE.Vector3(), []);
     const { rapier, world } = useRapier();
 
+    // State to track if the character is grounded
+    const [isGrounded, setIsGrounded] = useState(false);
+
     useFrame((_, delta) => {
         if (!rigidBodyRef.current) return;
         const rigidBody = rigidBodyRef.current;
@@ -64,14 +67,16 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
         );
         rigidBody.setLinvel(vec3(newVelocity), true);
 
+        // Grounded check using raycasting
+        const position = rigidBody.translation();
+        const jumpRay = new rapier.Ray({ x: position.x, y: position.y, z: position.z }, { x: 0, y: -1, z: 0 });
+        const hit = world.castRay(jumpRay, characterRadius + 1.1, true, undefined, interactionGroups(1));
+        setIsGrounded(!!hit); // Set isGrounded based on raycast hit
+        console.log(hit)
         // Jumping logic
-        if (keys.space) {
-            const position = rigidBody.translation();
-            const jumpRay = new rapier.Ray({ x: position.x, y: position.y, z: position.z }, { x: 0, y: -1, z: 0 });
-            const hit = world.castRay(jumpRay, characterRadius + 0.1, true);
-            if (hit) {
-                rigidBody.applyImpulse(jumpDirection, true);
-            }
+        if (keys.space && isGrounded) {
+            rigidBody.applyImpulse(jumpDirection, true);
+            setIsGrounded(false); // Reset grounded status after jumping
         }
 
         // Update position and camera
@@ -85,17 +90,15 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
     });
 
     const handleCollisionEnter = (event: CollisionEnterPayload) => {
-        console.log("Collision Enter:", event);
+        //console.log("Collision Enter:", event);
         if (event.other.rigidBodyObject) {
-            console.log(
-                `${event.target.rigidBodyObject} collided with ${event.other.rigidBodyObject}`
-            );
+            //console.log(`${event.target.rigidBodyObject} collided with ${event.other.rigidBodyObject}`);
         }
         onCollisionEnter?.(event);
     };
 
     const handleCollisionExit = (event: CollisionExitPayload) => {
-        console.log("Collision Exit:", event);
+        //console.log("Collision Exit:", event);
         onCollisionExit?.(event);
     };
 
