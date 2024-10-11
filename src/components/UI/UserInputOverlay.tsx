@@ -29,6 +29,8 @@ const UserInputOverlay: React.FC<UserInputOverlayProps> = ({ onPlay }) => {
         <option value="default">Default</option>
         <option value="rainbow">Rainbow</option>
         <option value="glow">Glow</option>
+        <option value="ccc">CCC</option>
+        <option value="kale">kale</option>
       </select>
       <button onClick={handlePlay}>PLAY</button>
     </div>

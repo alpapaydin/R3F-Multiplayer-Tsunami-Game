@@ -1,6 +1,6 @@
 // skins.ts
 
-import { ShaderA, ShaderB, ShaderC } from '../../shaders/PlayerShaders';
+import { ShaderA, ShaderB, ShaderC, ShaderCool, kale } from '../../shaders/PlayerShaders';
 import * as THREE from 'three';
 
 type SkinTemplate = {
@@ -36,5 +36,21 @@ export const skins: Record<string, SkinTemplate> = {
       glowIntensity: { value: 1.0 }, // Custom uniform for glow shader
     },
   },
-  // Add more skins as needed
+  ccc: {
+    shader: ShaderCool, // This is the shader defined earlier
+    uniforms: {
+      time: { value: 0 }, // Uniform for time, driving the animation
+      waveAmplitude: { value: 0.05 }, // Amplitude of the wave distortion effect
+      waveFrequency: { value: 10.0 }, // Frequency of the wave distortion
+      pulseSpeed: { value: 2.0 }, // Speed of the pulsating effect
+    },
+  },
+  kale: {
+    shader: kale, // This is the shader defined earlier
+    uniforms: {
+      time: { value: 0 }, // Uniform for time, driving the kaleidoscope animation
+      iResolution: { value: new THREE.Vector2(800, 600) }, // Screen resolution
+    },
+  },
+  
 };
