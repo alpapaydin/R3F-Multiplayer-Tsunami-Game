@@ -44,9 +44,13 @@ const Chunk: React.FC<ChunkProps> = ({
         const worldX = position[0] + x;
         const worldZ = position[2] + z;
 
+        // Generate additional noise for height variation
         const biome = getBiomeAt(worldX, worldZ);
-        const heightValue = (heightNoise(worldX * noiseScale, worldZ * noiseScale) + 1) * 0.5;
-        const height = heightValue * heightScale * biome.heightMultiplier;
+        const randomNoise = heightNoise(worldX * noiseScale * 0.5, worldZ * noiseScale * 0.5);
+        // Add some randomness to the height, scaled by the biome roughness
+        const variation = (randomNoise * biome.roughness) * 0.8; // Adjust 0.2 to control randomness intensity
+        const heightValue = (heightNoise(worldX * noiseScale, worldZ * noiseScale) + 1) * biome.roughness;
+        const height = (heightValue + variation) * heightScale * biome.heightMultiplier;
 
         vertices.push(x, height, z);
         colors.push(biome.color.r, biome.color.g, biome.color.b);

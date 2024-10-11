@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { RigidBody, interactionGroups } from '@react-three/rapier';
 import Chunk from './Chunk';
-import { getBiome, Biome } from '../systems/biomes';
+import { getBiome, Biome, interpolateBiomes } from '../systems/biomes';
 import { useFrame } from '@react-three/fiber';
 import alea from 'alea';
 import { PropSpawner } from '../systems/PropSpawner';
@@ -34,24 +34,51 @@ const Terrain: React.FC<TerrainProps> = ({
 }) => {
   const [loadedChunks, setLoadedChunks] = useState<ChunkData[]>([]);
   const prng = useMemo(() => alea(mapSeed), [mapSeed]);
-
   const heightNoise = useRef(createNoise2D(prng));
   const temperatureNoise = useRef(createNoise2D(prng));
   const humidityNoise = useRef(createNoise2D(prng));
   const previousPlayerChunk = useRef<{ x: number; z: number } | null>(null);
   const chunkLoadQueue = useRef<ChunkData[]>([]);
   const isLoading = useRef(false);
-
   const propSpawner = useMemo(() => new PropSpawner(mapSeed), [mapSeed]);
-
   const getChunkKey = useCallback((x: number, z: number): string => {
     return `${Math.floor(x / chunkSize)},${Math.floor(z / chunkSize)}`;
   }, [chunkSize]);
 
   const getBiomeAt = useCallback((x: number, z: number): Biome => {
-    const temperature = (temperatureNoise.current(x * 0.001, z * 0.001) + 1) * 0.5;
-    const humidity = (humidityNoise.current(x * 0.001, z * 0.001) + 1) * 0.5;
-    return getBiome(temperature, humidity);
+    const temperatureScale = 0.001;
+    const humidityScale = 0.001;
+    const interpolationScale = 0.8;
+
+    const temperature = (temperatureNoise.current(x * temperatureScale, z * temperatureScale) + 1) * 0.5;
+    const humidity = (humidityNoise.current(x * humidityScale, z * humidityScale) + 1) * 0.5;
+
+    const baseBiome = getBiome(temperature, humidity);
+
+    // Check neighboring points for interpolation
+    const neighborOffsets = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ];
+
+    let interpolatedBiome = baseBiome;
+
+    for (const [offsetX, offsetZ] of neighborOffsets) {
+      const neighborTemp = (temperatureNoise.current((x + offsetX) * temperatureScale, (z + offsetZ) * temperatureScale) + 1) * 0.5;
+      const neighborHumidity = (humidityNoise.current((x + offsetX) * humidityScale, (z + offsetZ) * humidityScale) + 1) * 0.5;
+      const neighborBiome = getBiome(neighborTemp, neighborHumidity);
+
+      if (neighborBiome.name !== baseBiome.name) {
+        const distance = Math.sqrt(offsetX * offsetX + offsetZ * offsetZ);
+        const t = Math.max(0, 1 - distance * interpolationScale);
+        interpolatedBiome = interpolateBiomes(baseBiome, neighborBiome, t);
+        break; // For simplicity, we'll just use the first different neighbor biome
+      }
+    }
+
+    return interpolatedBiome;
   }, []);
 
   const generateChunkData = useCallback((chunkX: number, chunkZ: number): ChunkData => {

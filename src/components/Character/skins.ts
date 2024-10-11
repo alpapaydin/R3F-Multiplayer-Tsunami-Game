@@ -52,5 +52,5 @@ export const skins: Record<string, SkinTemplate> = {
       iResolution: { value: new THREE.Vector2(800, 600) }, // Screen resolution
     },
   },
-  
+
 };

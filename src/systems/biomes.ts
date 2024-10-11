@@ -51,7 +51,7 @@ export const Biomes: Record<string, Biome> = {
     name: 'Forest',
     color: new Color(0x228b22),
     heightMultiplier: 1.2,
-    roughness: 0.7,
+    roughness: 0.4,
     props: [
       { name: 'Tree', probability: 0.6, minScale: 10, maxScale: 20.5 },
       { name: 'Bush', probability: 0.3, minScale: 0.5, maxScale: 1 },
