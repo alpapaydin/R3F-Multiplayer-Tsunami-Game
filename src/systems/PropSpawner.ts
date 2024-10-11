@@ -31,29 +31,36 @@ export class PropSpawner {
         const props: PropInstance[] = [];
         const chunkSeed = this.getChunkSeed(chunkX, chunkZ);
         const chunkRng = alea(chunkSeed);
-        const propDensity = 0.1; // Increased density for testing
+        
+        const gridSize = 4; // Adjust this value to control prop density
+        const cellSize = chunkSize / gridSize;
 
         console.log(`Generating props for chunk (${chunkX}, ${chunkZ}), biome: ${biome.name}`);
 
-        for (let x = 0; x < chunkSize; x += 2) {
-          for (let z = 0; z < chunkSize; z += 2) {
-            const worldX = chunkX * chunkSize + x;
-            const worldZ = chunkZ * chunkSize + z;
+        for (let gridX = 0; gridX < gridSize; gridX++) {
+          for (let gridZ = 0; gridZ < gridSize; gridZ++) {
+            const baseX = chunkX * chunkSize + gridX * cellSize;
+            const baseZ = chunkZ * chunkSize + gridZ * cellSize;
 
-            const densityValue = (this.propNoise(worldX * 0.02, worldZ * 0.02, chunkSeed * 0.1) + 1) * 0.5;
-            if (densityValue < propDensity) {
+            // Add some randomness to the position within the grid cell
+            const offsetX = chunkRng() * cellSize;
+            const offsetZ = chunkRng() * cellSize;
+
+            const worldX = baseX + offsetX;
+            const worldZ = baseZ + offsetZ;
+
+            const noiseValue = (this.propNoise(worldX * 0.1, worldZ * 0.1, chunkSeed * 0.1) + 1) * 0.5;
+            
+            if (noiseValue < 0.3) { // Adjust this threshold to control overall prop density
               const propType = this.selectPropType(biome.props, worldX, worldZ, chunkSeed);
               if (propType) {
                 const y = getHeightAt(worldX, worldZ);
                 const scale = this.getRandomScale(propType, chunkRng);
                 const rotation = chunkRng() * Math.PI * 2;
 
-                const offsetX = chunkRng() * 2;
-                const offsetZ = chunkRng() * 2;
-
                 props.push({
                   type: propType.name,
-                  position: [worldX + offsetX, y, worldZ + offsetZ],
+                  position: [worldX, y, worldZ],
                   scale,
                   rotation,
                 });
