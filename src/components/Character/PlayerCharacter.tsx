@@ -8,7 +8,7 @@ import { RapierRigidBody } from '@react-three/rapier';
 import BaseCharacter from './BaseCharacter';
 
 const JUMP_FORCE = 100;
-const MAX_VELOCITY = 20;
+const MAX_VELOCITY = 70;
 
 interface PlayerCharacterProps {
   onPositionUpdate: (position: THREE.Vector3, velocity: THREE.Vector3) => void;
