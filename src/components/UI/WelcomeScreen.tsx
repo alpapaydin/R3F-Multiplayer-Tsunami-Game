@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import {WS_URL} from '../../constants';
+// WelcomeScreen.tsx
+
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { WS_URL } from '../../constants';
 import './WelcomeScreen.css';
 
 interface WelcomeScreenProps {
@@ -9,6 +11,8 @@ interface WelcomeScreenProps {
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConnected }) => {
   const [dots, setDots] = useState(0);
   const [isConnecting, setIsConnecting] = useState(true);
+  const socketRef = React.useRef<WebSocket | null>(null);  // WebSocket ref to persist across renders
+  const [isSocketConnected, setIsSocketConnected] = useState(false); // Track connection state
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -16,30 +20,41 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConnected }) => {
     }, 500);
 
     const connectToServer = () => {
+      if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
+        // If the socket is already open or in the process of connecting, return to prevent new connections
+        return;
+      }
+
       const socket = new WebSocket(WS_URL);
-      
+      socketRef.current = socket;  // Assign new socket to ref
+
       socket.onopen = () => {
         setIsConnecting(false);
-        onConnected(socket);
+        if (!isSocketConnected) {
+          onConnected(socket); // Call onConnected with the socket
+          setIsSocketConnected(true); // Mark as connected
+        }
       };
 
       socket.onclose = () => {
-        console.log('Connection failed, retrying...');
+        console.log('Connection closed, retrying...');
+        setIsConnecting(true);
+        setIsSocketConnected(false);  // Reset connection state
         setTimeout(connectToServer, 1000); // Retry after 1 second
       };
 
-      socket.onerror = () => {
-        console.log('Connection error, retrying...');
-        socket.close(); // Trigger retry logic
+      socket.onerror = (err) => {
+        console.log('WebSocket error, retrying...', err);
+        socket.close();  // Trigger retry on error
       };
     };
 
-    connectToServer();
+    connectToServer();  // Attempt connection on mount
 
     return () => {
-      clearInterval(interval);
+      clearInterval(interval); // Clean up interval
     };
-  }, [onConnected]);
+  }, [isSocketConnected, onConnected]);  // Ensure it only re-runs when necessary
 
   return (
     <div className="welcome-screen">
@@ -47,5 +62,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onConnected }) => {
     </div>
   );
 };
+
 
 export default WelcomeScreen;

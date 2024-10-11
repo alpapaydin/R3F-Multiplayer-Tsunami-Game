@@ -50,7 +50,7 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({ playerId, playerName, pos
             <RigidBody
                 ref={rigidBodyRef}
                 colliders="ball"
-                mass={1}
+                gravityScale={5}
                 position={position}
                 linearDamping={0.95}
                 angularDamping={0.95}

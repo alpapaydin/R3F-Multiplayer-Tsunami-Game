@@ -32,22 +32,20 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName }) 
 
   // Initialize WebSocket Client
   useEffect(() => {
-    if (socket && playerId) {
+    if (socket && playerId && !wsClient) { // Ensure only one client is created
       const client = new WSClient(socket, playerId);
       setWsClient(client);
-
-      // Handle position updates from other players
+  
       client.handlePositionUpdates((id, position) => {
         setOtherPlayers((prevPlayers) => ({
           ...prevPlayers,
           [id]: {
             ...prevPlayers[id],
-            position
-          }
+            position,
+          },
         }));
       });
-
-      // Handle player disconnections
+  
       client.handlePlayerDisconnects((id) => {
         setOtherPlayers((prevPlayers) => {
           const updatedPlayers = { ...prevPlayers };
@@ -55,35 +53,33 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName }) 
           return updatedPlayers;
         });
       });
-
-      // Handle player registration (positions, names, scores)
+  
       client.handleRegistration((players) => {
         setOtherPlayers(players);
       });
-
-      // Handle name updates
+  
       client.handleNameUpdates((id, name) => {
         setOtherPlayers((prevPlayers) => ({
           ...prevPlayers,
           [id]: {
             ...prevPlayers[id],
-            name
-          }
+            name,
+          },
         }));
       });
-
-      // Handle score updates
+  
       client.handleScoreUpdates((id, score) => {
         setOtherPlayers((prevPlayers) => ({
           ...prevPlayers,
           [id]: {
             ...prevPlayers[id],
-            score
-          }
+            score,
+          },
         }));
       });
     }
-  }, [socket, playerId]);
+  }, [socket, playerId, wsClient]);
+  
 
   return (
     <Canvas camera={{ position: [0, 50, 50], fov: 75 }}>
