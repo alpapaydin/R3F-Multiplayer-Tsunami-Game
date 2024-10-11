@@ -16,9 +16,10 @@ interface SceneProps {
   playerId: string | null;
   mapSeed: number | null;
   isPlayerSpawned: boolean;
+  initialGameState: any;
 }
 
-const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, playerSkin, isPlayerSpawned }) => {
+const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, playerSkin, isPlayerSpawned, initialGameState }) => {
   const [playerPosition, setPlayerPosition] = useState(new THREE.Vector3(0, 50, 0));
   const [otherPlayers, setOtherPlayers] = useState<{
     [key: string]: { position: THREE.Vector3; name: string; score: number; skin: string };
@@ -30,6 +31,23 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
     const velocity = new THREE.Vector3(0, 0, 0); // Replace with actual velocity if available
     wsClient?.sendPosition(newPosition, velocity);
   }, [wsClient]);
+
+  useEffect(() => {
+    if (initialGameState) {
+      const initialPlayers: typeof otherPlayers = {};
+      Object.entries(initialGameState).forEach(([id, playerData]: [string, any]) => {
+        if (id !== playerId) {
+          initialPlayers[id] = {
+            position: new THREE.Vector3(playerData.position.x, playerData.position.y, playerData.position.z),
+            name: playerData.playerName,
+            score: playerData.score,
+            skin: playerData.skin
+          };
+        }
+      });
+      setOtherPlayers(initialPlayers);
+    }
+  }, [initialGameState, playerId]);
 
   useEffect(() => {
     if (socket && playerId && !wsClient) {
@@ -123,17 +141,17 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
           />
         )}
         
-        {Object.keys(otherPlayers).map((id) => (
+        {Object.entries(otherPlayers).map(([id, player]) => (
           id !== playerId && (
-            <BaseCharacter
-              key={id}
-              characterRadius={1}
-              playerName={otherPlayers[id].name}
-              playerId={id}
-              position={otherPlayers[id].position.toArray()}
-              score={otherPlayers[id].score}
-              skin={otherPlayers[id].skin}
-            />
+          <BaseCharacter
+            key={id}
+            characterRadius={1}
+            playerName={player.name}
+            playerId={id}
+            position={player.position.toArray()}
+            score={player.score}
+            skin={player.skin}
+          />
           )
         ))}
       </Physics>

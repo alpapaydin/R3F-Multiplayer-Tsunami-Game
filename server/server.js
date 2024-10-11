@@ -50,6 +50,7 @@
         switch(data.type) {
             case 'POSITION_UPDATE':
                 if (players[data.id]) {
+                    console.log("POSITION UPDATE", Date.now())
                     players[data.id].position = data.position;
                     players[data.id].velocity = data.velocity;
                     broadcast({

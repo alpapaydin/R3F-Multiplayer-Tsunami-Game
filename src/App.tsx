@@ -13,6 +13,7 @@ const App: React.FC = () => {
   const [isPlayerSpawned, setIsPlayerSpawned] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [mapSeed, setMapSeed] = useState<number | null>(null);
+  const [initialGameState, setInitialGameState] = useState<any>(null);
 
   const handleConnected = (socket: WebSocket) => {
     setSocket(socket);
@@ -20,9 +21,12 @@ const App: React.FC = () => {
 
     socket.onmessage = (message) => {
       const data = JSON.parse(message.data);
+      console.log("Received message:", data);
       if (data.type === 'REGISTER') {
         setPlayerId(data.id);
         setMapSeed(data.mapSeed);
+      } else if (data.type === 'GAME_STATE') {
+        setInitialGameState(data.players);
       }
     };
   };
@@ -56,6 +60,7 @@ const App: React.FC = () => {
             playerId={playerId}
             mapSeed={mapSeed}
             isPlayerSpawned={isPlayerSpawned}
+            initialGameState={initialGameState}
           />
 
           {!hasStarted && <UserInputOverlay onPlay={handlePlay} />}
