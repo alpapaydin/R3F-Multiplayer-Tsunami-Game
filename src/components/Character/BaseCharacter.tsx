@@ -1,7 +1,7 @@
 import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { RigidBody, RapierRigidBody } from '@react-three/rapier';
+import { RigidBody, RapierRigidBody, CollisionEnterPayload, CollisionExitPayload } from '@react-three/rapier';
 import { Vector3, ShaderMaterial } from 'three';
 import NameTag from '../UI/NameTag';
 import { vertexShader, fragmentShader } from '../../shaders/PlayerShader';
@@ -14,9 +14,19 @@ interface BaseCharacterProps {
   characterRadius: number;
   score: number;
   skin: string;
+  onCollisionEnter?: (event: CollisionEnterPayload) => void;
+  onCollisionExit?: (event: CollisionExitPayload) => void;
 }
 
-const BaseCharacter: React.FC<BaseCharacterProps> = ({ playerId, playerName, position = [0, 25, 0], rigidBodyRef, characterRadius }) => {
+const BaseCharacter: React.FC<BaseCharacterProps> = ({
+  playerId,
+  playerName,
+  position = [0, 25, 0],
+  rigidBodyRef,
+  characterRadius,
+  onCollisionEnter,
+  onCollisionExit
+}) => {
     const internalRigidBodyRef = useRef<RapierRigidBody>(null);
     const ref = rigidBodyRef || internalRigidBodyRef;
     const meshRef = useRef<THREE.Mesh>(null);
@@ -51,6 +61,8 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({ playerId, playerName, pos
                 position={position}
                 linearDamping={0.95}
                 angularDamping={0.95}
+                onCollisionEnter={onCollisionEnter}
+                onCollisionExit={onCollisionExit}
             >
                 <mesh ref={meshRef} castShadow>
                     <sphereGeometry args={[characterRadius, 32, 32]} />

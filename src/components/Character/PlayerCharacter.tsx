@@ -1,7 +1,7 @@
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { vec3, useRapier } from '@react-three/rapier';
+import { vec3, useRapier, CollisionEnterPayload, CollisionExitPayload } from '@react-three/rapier';
 import { useKeyboard } from '../../hooks/useKeyboard';
 import { useCameraControls } from '../CameraControls';
 import { RapierRigidBody } from '@react-three/rapier';
@@ -18,9 +18,21 @@ interface PlayerCharacterProps {
   characterRadius: number;
   score: number;
   skin: string;
+  onCollisionEnter?: (event: CollisionEnterPayload) => void;
+  onCollisionExit?: (event: CollisionExitPayload) => void;
 }
 
-const PlayerCharacter: React.FC<PlayerCharacterProps> = ({ onPositionUpdate, socket, playerId, playerName, characterRadius, score, skin }) => {
+const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
+  onPositionUpdate,
+  socket,
+  playerId,
+  playerName,
+  characterRadius,
+  score,
+  skin,
+  onCollisionEnter,
+  onCollisionExit
+}) => {
     const rigidBodyRef = useRef<RapierRigidBody>(null);
     const keys = useKeyboard();
     const { rotation, updateCamera } = useCameraControls();
@@ -72,6 +84,21 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({ onPositionUpdate, soc
         onPositionUpdate(characterPosition, characterVelocity);
     });
 
+    const handleCollisionEnter = (event: CollisionEnterPayload) => {
+        console.log("Collision Enter:", event);
+        if (event.other.rigidBodyObject) {
+            console.log(
+                `${event.target.rigidBodyObject} collided with ${event.other.rigidBodyObject}`
+            );
+        }
+        onCollisionEnter?.(event);
+    };
+
+    const handleCollisionExit = (event: CollisionExitPayload) => {
+        console.log("Collision Exit:", event);
+        onCollisionExit?.(event);
+    };
+
     return (
         <BaseCharacter
           skin={skin}
@@ -81,6 +108,8 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({ onPositionUpdate, soc
           playerId={playerId}
           playerName={playerName}
           position={[0, 20, 0]}
+          onCollisionEnter={handleCollisionEnter}
+          onCollisionExit={handleCollisionExit}
         />
     );
 };
