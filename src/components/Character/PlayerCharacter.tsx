@@ -19,9 +19,10 @@ interface PlayerCharacterProps {
   playerName: string | null;
   characterRadius: number;
   score: number;
+  skin: string;
 }
 
-const PlayerCharacter: React.FC<PlayerCharacterProps> = ({ onPositionUpdate, socket, playerId, playerName, characterRadius, score }) => {
+const PlayerCharacter: React.FC<PlayerCharacterProps> = ({ onPositionUpdate, socket, playerId, playerName, characterRadius, score, skin }) => {
     const rigidBodyRef = useRef<RapierRigidBody>(null);
     const keys = useKeyboard();
     const { rotation, updateCamera } = useCameraControls();
@@ -80,6 +81,7 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({ onPositionUpdate, soc
 
     return (
         <BaseCharacter
+          skin={skin}
           score={score}
           characterRadius={characterRadius}
           rigidBodyRef={rigidBodyRef}

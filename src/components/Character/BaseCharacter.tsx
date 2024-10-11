@@ -1,5 +1,4 @@
-// components/characters/BaseCharacter.tsx
-import React, { useRef, useMemo, useState } from 'react';
+import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RigidBody, RapierRigidBody } from '@react-three/rapier';
@@ -14,12 +13,12 @@ interface BaseCharacterProps {
   rigidBodyRef?: React.RefObject<RapierRigidBody>;
   characterRadius: number;
   score: number;
+  skin: string;
 }
 
 const BaseCharacter: React.FC<BaseCharacterProps> = ({ playerId, playerName, position = [0, 25, 0], rigidBodyRef, characterRadius }) => {
     const internalRigidBodyRef = useRef<RapierRigidBody>(null);
-    const ref = rigidBodyRef || internalRigidBodyRef;  // Choose the appropriate ref
-
+    const ref = rigidBodyRef || internalRigidBodyRef;
     const meshRef = useRef<THREE.Mesh>(null);
     const shaderMaterial = useMemo(() => new ShaderMaterial({
       vertexShader,
@@ -31,15 +30,13 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({ playerId, playerName, pos
       transparent: true,
     }), []);
 
-    const characterPosition = useMemo(() => new THREE.Vector3(), []);
-    const [nameTagPosition, setNameTagPosition] = useState(new THREE.Vector3());
+    const [characterPosition, setCharacterPosition] = useState(new THREE.Vector3(...position));
 
     useFrame((_, delta) => {
         if (!ref.current) return;
-        const translation = ref.current.translation()
-        characterPosition.set(translation.x, translation.y, translation.z);
-        console.log(playerName)
-        setNameTagPosition(new THREE.Vector3(translation.x, translation.y, translation.z));
+        const translation = ref.current.translation();
+        const newPosition = new THREE.Vector3(translation.x, translation.y, translation.z);
+        setCharacterPosition(newPosition);
 
         // Update shader time
         shaderMaterial.uniforms.time.value += delta;
@@ -48,7 +45,7 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({ playerId, playerName, pos
     return (
         <>
             <RigidBody
-                ref={rigidBodyRef}
+                ref={ref}
                 colliders="ball"
                 gravityScale={5}
                 position={position}
@@ -60,7 +57,7 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({ playerId, playerName, pos
                     <primitive object={shaderMaterial} attach="material" />
                 </mesh>
             </RigidBody>
-            <NameTag name={playerName} position={nameTagPosition} />
+            <NameTag name={playerName} position={characterPosition} />
         </>
     );
 };

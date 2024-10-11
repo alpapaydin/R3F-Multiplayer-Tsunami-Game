@@ -1,5 +1,4 @@
-// components/UI/NameTag.tsx
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Text } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -11,12 +10,16 @@ interface NameTagProps {
 
 const NameTag: React.FC<NameTagProps> = ({ name, position }) => {
   const textRef = useRef<any>();
-  const { camera } = useThree(); // Get access to the camera
+  const { camera } = useThree();
+
+  useEffect(() => {
+    if (textRef.current) {
+      textRef.current.position.set(position.x, position.y + 1.5, position.z);
+    }
+  }, [position]);
 
   useFrame(() => {
     if (textRef.current) {
-      // Always update position
-      textRef.current.position.set(position.x, position.y + 1.5, position.z);
       textRef.current.quaternion.copy(camera.quaternion);
     }
   });
@@ -30,7 +33,6 @@ const NameTag: React.FC<NameTagProps> = ({ name, position }) => {
       anchorY="middle"
       outlineColor="black"
       outlineWidth={0.07}
-      
     >
       {name}
     </Text>
