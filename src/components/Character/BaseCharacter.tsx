@@ -13,6 +13,7 @@ interface BaseCharacterProps {
   position?: [number, number, number];
   rigidBodyRef?: React.RefObject<RapierRigidBody>;
   characterRadius: number;
+  score: number;
 }
 
 const BaseCharacter: React.FC<BaseCharacterProps> = ({ playerId, playerName, position = [0, 25, 0], rigidBodyRef, characterRadius }) => {
