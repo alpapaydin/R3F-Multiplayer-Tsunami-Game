@@ -16,48 +16,59 @@ export class PropSpawner {
   constructor(private seed: number) {
     const prng = alea(seed);
     this.propNoise = createNoise3D(prng);
+    console.log(`PropSpawner initialized with seed: ${seed}`);
   }
 
-  generatePropsForChunk(
+  async generatePropsForChunk(
     chunkX: number,
     chunkZ: number,
     chunkSize: number,
     biome: Biome,
     getHeightAt: (x: number, z: number) => number
-  ): PropInstance[] {
-    const props: PropInstance[] = [];
-    const chunkSeed = this.getChunkSeed(chunkX, chunkZ);
-    const chunkRng = alea(chunkSeed);
-    const propDensity = 0.05;
+  ): Promise<PropInstance[]> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const props: PropInstance[] = [];
+        const chunkSeed = this.getChunkSeed(chunkX, chunkZ);
+        const chunkRng = alea(chunkSeed);
+        const propDensity = 0.1; // Increased density for testing
 
-    for (let x = 0; x < chunkSize; x += 2) {
-      for (let z = 0; z < chunkSize; z += 2) {
-        const worldX = chunkX * chunkSize + x;
-        const worldZ = chunkZ * chunkSize + z;
+        console.log(`Generating props for chunk (${chunkX}, ${chunkZ}), biome: ${biome.name}`);
 
-        const densityValue = (this.propNoise(worldX * 0.02, worldZ * 0.02, chunkSeed * 0.1) + 1) * 0.5;
-        if (densityValue < propDensity) {
-          const propType = this.selectPropType(biome.props, worldX, worldZ, chunkSeed);
-          if (propType) {
-            const y = getHeightAt(worldX, worldZ);
-            const scale = this.getRandomScale(propType, chunkRng);
-            const rotation = chunkRng() * Math.PI * 2;
+        for (let x = 0; x < chunkSize; x += 2) {
+          for (let z = 0; z < chunkSize; z += 2) {
+            const worldX = chunkX * chunkSize + x;
+            const worldZ = chunkZ * chunkSize + z;
 
-            const offsetX = chunkRng() * 2;
-            const offsetZ = chunkRng() * 2;
+            const densityValue = (this.propNoise(worldX * 0.02, worldZ * 0.02, chunkSeed * 0.1) + 1) * 0.5;
+            if (densityValue < propDensity) {
+              const propType = this.selectPropType(biome.props, worldX, worldZ, chunkSeed);
+              if (propType) {
+                const y = getHeightAt(worldX, worldZ);
+                const scale = this.getRandomScale(propType, chunkRng);
+                const rotation = chunkRng() * Math.PI * 2;
 
-            props.push({
-              type: propType.name,
-              position: [worldX + offsetX, y, worldZ + offsetZ],
-              scale,
-              rotation,
-            });
+                const offsetX = chunkRng() * 2;
+                const offsetZ = chunkRng() * 2;
+
+                props.push({
+                  type: propType.name,
+                  position: [worldX + offsetX, y, worldZ + offsetZ],
+                  scale,
+                  rotation,
+                });
+              }
+            }
           }
         }
-      }
-    }
 
-    return props;
+        console.log(`Generated ${props.length} props for chunk (${chunkX}, ${chunkZ})`);
+        if (props.length === 0) {
+          console.warn(`No props generated for chunk (${chunkX}, ${chunkZ}). Biome: ${biome.name}, Prop types:`, biome.props);
+        }
+        resolve(props);
+      }, 0);
+    });
   }
 
   private getChunkSeed(chunkX: number, chunkZ: number): number {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { RigidBody, interactionGroups } from '@react-three/rapier';
@@ -6,8 +6,7 @@ import Chunk from './Chunk';
 import { getBiome, Biome } from '../systems/biomes';
 import { useFrame } from '@react-three/fiber';
 import alea from 'alea';
-import { PropSpawner, PropInstance } from '../systems/PropSpawner';
-import Prop from './Props/Prop';
+import { PropSpawner } from '../systems/PropSpawner';
 
 interface TerrainProps {
   chunkSize: number;
@@ -22,9 +21,8 @@ interface TerrainProps {
 interface ChunkData {
   key: string;
   position: [number, number, number];
-  props: PropInstance[];
 }
-
+const MemoizedChunk = React.memo(Chunk);
 const Terrain: React.FC<TerrainProps> = ({
   chunkSize,
   chunkResolution,
@@ -43,7 +41,6 @@ const Terrain: React.FC<TerrainProps> = ({
   const previousPlayerChunk = useRef<{ x: number; z: number } | null>(null);
   const chunkLoadQueue = useRef<ChunkData[]>([]);
   const isLoading = useRef(false);
-  const frameCount = useRef(0);
 
   const propSpawner = useMemo(() => new PropSpawner(mapSeed), [mapSeed]);
 
@@ -57,47 +54,28 @@ const Terrain: React.FC<TerrainProps> = ({
     return getBiome(temperature, humidity);
   }, []);
 
-  const getHeightAt = useCallback((x: number, z: number): number => {
-    const biome = getBiomeAt(x, z);
-    const heightValue = (heightNoise.current(x * noiseScale, z * noiseScale) + 1) * 0.5;
-    return heightValue * heightScale * biome.heightMultiplier;
-  }, [getBiomeAt, heightScale, noiseScale]);
-
   const generateChunkData = useCallback((chunkX: number, chunkZ: number): ChunkData => {
     const key = getChunkKey(chunkX * chunkSize, chunkZ * chunkSize);
     const position: [number, number, number] = [chunkX * chunkSize, 0, chunkZ * chunkSize];
-    const biome = getBiomeAt(chunkX * chunkSize, chunkZ * chunkSize);
-    const props = propSpawner.generatePropsForChunk(chunkX, chunkZ, chunkSize, biome, getHeightAt);
-
-    return { key, position, props };
-  }, [chunkSize, getChunkKey, getBiomeAt, propSpawner, getHeightAt]);
+    return { key, position };
+  }, [chunkSize, getChunkKey]);
 
   const loadChunk = useCallback((chunkData: ChunkData) => {
     return new Promise<void>((resolve) => {
       setTimeout(() => {
         setLoadedChunks(prevChunks => {
           if (!prevChunks.some(chunk => chunk.key === chunkData.key)) {
+            console.log(`Loaded chunk: ${chunkData.key}`);
             return [...prevChunks, chunkData];
           }
           return prevChunks;
         });
         resolve();
-      }, 10);
+      }, 0);
     });
   }, []);
 
-  const processChunkQueue = useCallback(async () => {
-    if (isLoading.current || chunkLoadQueue.current.length === 0) return;
-
-    isLoading.current = true;
-    const chunkToLoad = chunkLoadQueue.current.shift();
-    if (chunkToLoad) {
-      await loadChunk(chunkToLoad);
-    }
-    isLoading.current = false;
-  }, [loadChunk]);
-
-  const updateChunks = useCallback(() => {
+  const updateChunks = useCallback(async () => {
     const playerChunkX = Math.floor(playerPosition.x / chunkSize);
     const playerChunkZ = Math.floor(playerPosition.z / chunkSize);
 
@@ -108,77 +86,63 @@ const Terrain: React.FC<TerrainProps> = ({
     previousPlayerChunk.current = { x: playerChunkX, z: playerChunkZ };
 
     const newChunks: ChunkData[] = [];
-    const chunkKeys = new Set<string>(loadedChunks.map(chunk => chunk.key));
+    const currentChunkKeys = new Set<string>();
 
     for (let x = -renderDistance; x <= renderDistance; x++) {
       for (let z = -renderDistance; z <= renderDistance; z++) {
         const chunkX = playerChunkX + x;
         const chunkZ = playerChunkZ + z;
         const key = getChunkKey(chunkX * chunkSize, chunkZ * chunkSize);
+        currentChunkKeys.add(key);
 
-        if (!chunkKeys.has(key)) {
-          chunkKeys.add(key);
+        if (!loadedChunks.some(chunk => chunk.key === key)) {
           newChunks.push(generateChunkData(chunkX, chunkZ));
         }
       }
     }
 
-    setLoadedChunks(prevChunks => {
-      const keptChunks = prevChunks.filter(chunk => {
-        const [chunkX, chunkZ] = chunk.key.split(',').map(Number);
-        const withinRenderDistance = Math.abs(chunkX - playerChunkX) <= renderDistance && Math.abs(chunkZ - playerChunkZ) <= renderDistance;
-        return withinRenderDistance;
-      });
+    // Unload chunks that are out of range
+    setLoadedChunks(prevChunks => 
+      prevChunks.filter(chunk => currentChunkKeys.has(chunk.key))
+    );
 
-      const chunksToAdd = newChunks.filter(chunk => !prevChunks.some(prevChunk => prevChunk.key === chunk.key));
-      chunkLoadQueue.current.push(...chunksToAdd);
-      return keptChunks;
-    });
-  }, [playerPosition, chunkSize, renderDistance, getChunkKey, loadedChunks, generateChunkData]);
-
-  useFrame(() => {
-    frameCount.current += 1;
-
-    if (frameCount.current % 10 === 0) {
-      updateChunks();
+    // Load new chunks
+    for (const chunk of newChunks) {
+      await loadChunk(chunk);
     }
 
-    processChunkQueue();
-  });
+  }, [playerPosition, chunkSize, renderDistance, getChunkKey, loadedChunks, generateChunkData, loadChunk]);
 
-  const groupPropsByType = (props: PropInstance[]): Record<string, PropInstance[]> => {
-    return props.reduce((acc, prop) => {
-      if (!acc[prop.type]) {
-        acc[prop.type] = [];
-      }
-      acc[prop.type].push(prop);
-      return acc;
-    }, {} as Record<string, PropInstance[]>);
-  };
+  useEffect(() => {
+    updateChunks();
+  }, [updateChunks]);
+
+  useFrame(() => {
+    updateChunks();
+  });
 
   return (
     <>
       {loadedChunks.map(chunk => (
-        <React.Fragment key={chunk.key}>
-          <RigidBody
-            type="fixed"
-            colliders="trimesh"
-            collisionGroups={interactionGroups(2, 1)}
-          >
-            <Chunk
-              position={chunk.position}
-              size={chunkSize}
-              resolution={chunkResolution}
-              heightScale={heightScale}
-              noiseScale={noiseScale}
-              heightNoise={heightNoise.current}
-              getBiomeAt={getBiomeAt}
-            />
-          </RigidBody>
-          {Object.entries(groupPropsByType(chunk.props)).map(([type, instances]) => (
-            <Prop key={`${chunk.key}-${type}`} type={type} instances={instances} />
-          ))}
-        </React.Fragment>
+        <RigidBody
+          key={chunk.key}
+          type="fixed"
+          colliders="trimesh"
+          collisionGroups={interactionGroups(2, 1)}
+        >
+          <MemoizedChunk
+            key={chunk.key}
+            position={chunk.position}
+            size={chunkSize}
+            resolution={chunkResolution}
+            heightScale={heightScale}
+            noiseScale={noiseScale}
+            heightNoise={heightNoise.current}
+            getBiomeAt={getBiomeAt}
+            propSpawner={propSpawner}
+            chunkKey={chunk.key}
+          />
+        </RigidBody>
       ))}
     </>
   );
