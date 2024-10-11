@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { Sky } from '@react-three/drei';
 import Terrain from './Terrain';
@@ -8,6 +8,11 @@ import BaseCharacter from './Character/BaseCharacter';
 import * as THREE from 'three';
 import { CHUNK_SIZE, CHUNK_RES, HEIGHT_SCALE, NOISE_SCALE, RENDER_DISTANCE } from '../constants';
 import WSClient from '../network/WSClient';
+
+// Define constants for position update optimization
+const POSITION_UPDATE_THRESHOLD = 0.05; // Minimum distance (in units) to trigger an update
+const POSITION_UPDATE_INTERVAL = 100; // Minimum time (in ms) between updates
+const INTERPOLATION_FACTOR = 0.4; // Adjust this value to change interpolation speed
 
 interface SceneProps {
   playerName: string;
@@ -19,29 +24,93 @@ interface SceneProps {
   initialGameState: any;
 }
 
+interface PlayerState {
+  position: THREE.Vector3;
+  velocity: THREE.Vector3;
+  targetPosition: THREE.Vector3;
+  name: string;
+  score: number;
+  skin: string;
+}
+
+const OtherPlayers: React.FC<{ players: {[key: string]: PlayerState}, playerId: string | null }> = ({ players, playerId }) => {
+  useFrame((_, delta) => {
+    Object.entries(players).forEach(([id, player]) => {
+      if (id !== playerId && player && player.position && player.targetPosition && player.velocity) {
+        player.position.lerp(player.targetPosition, INTERPOLATION_FACTOR);
+        player.position.add(player.velocity.clone().multiplyScalar(delta));
+      }
+    });
+  });
+
+  return (
+    <>
+      {Object.entries(players).map(([id, player]) => (
+        id !== playerId && player && player.position && (
+          <BaseCharacter
+            key={id}
+            characterRadius={1}
+            playerName={player.name}
+            playerId={id}
+            position={player.position.toArray()}
+            score={player.score}
+            skin={player.skin}
+          />
+        )
+      ))}
+    </>
+  );
+};
+
 const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, playerSkin, isPlayerSpawned, initialGameState }) => {
   const [playerPosition, setPlayerPosition] = useState(new THREE.Vector3(0, 50, 0));
-  const [otherPlayers, setOtherPlayers] = useState<{
-    [key: string]: { position: THREE.Vector3; name: string; score: number; skin: string };
-  }>({});
+  const [playerVelocity, setPlayerVelocity] = useState(new THREE.Vector3(0, 0, 0));
+  const [otherPlayers, setOtherPlayers] = useState<{[key: string]: PlayerState}>({});
   const [wsClient, setWsClient] = useState<WSClient | null>(null);
 
-  const handlePositionUpdate = useCallback((newPosition: THREE.Vector3) => {
+  const lastUpdatePosition = useRef(new THREE.Vector3(0, 50, 0));
+  const lastUpdateTime = useRef(0);
+
+  const handlePositionUpdate = useCallback((newPosition: THREE.Vector3, newVelocity: THREE.Vector3) => {
     setPlayerPosition(newPosition.clone());
-    const velocity = new THREE.Vector3(0, 0, 0); // Replace with actual velocity if available
-    wsClient?.sendPosition(newPosition, velocity);
+    setPlayerVelocity(newVelocity.clone());
+    
+    const currentTime = Date.now();
+    const timeSinceLastUpdate = currentTime - lastUpdateTime.current;
+    const distanceMoved = newPosition.distanceTo(lastUpdatePosition.current);
+
+    if (distanceMoved > POSITION_UPDATE_THRESHOLD && timeSinceLastUpdate > POSITION_UPDATE_INTERVAL) {
+      wsClient?.sendPosition(newPosition, newVelocity);
+      
+      lastUpdatePosition.current.copy(newPosition);
+      lastUpdateTime.current = currentTime;
+    }
   }, [wsClient]);
 
   useEffect(() => {
     if (initialGameState) {
-      const initialPlayers: typeof otherPlayers = {};
+      const initialPlayers: {[key: string]: PlayerState} = {};
       Object.entries(initialGameState).forEach(([id, playerData]: [string, any]) => {
         if (id !== playerId) {
           initialPlayers[id] = {
-            position: new THREE.Vector3(playerData.position.x, playerData.position.y, playerData.position.z),
-            name: playerData.playerName,
-            score: playerData.score,
-            skin: playerData.skin
+            position: new THREE.Vector3(
+              playerData.position?.x ?? 0,
+              playerData.position?.y ?? 50,
+              playerData.position?.z ?? 0
+            ),
+            velocity: new THREE.Vector3(
+              playerData.velocity?.x ?? 0,
+              playerData.velocity?.y ?? 0,
+              playerData.velocity?.z ?? 0
+            ),
+            targetPosition: new THREE.Vector3(
+              playerData.position?.x ?? 0,
+              playerData.position?.y ?? 50,
+              playerData.position?.z ?? 0
+            ),
+            name: playerData.playerName ?? "Unknown",
+            score: playerData.score ?? 0,
+            skin: playerData.skin ?? "default"
           };
         }
       });
@@ -54,12 +123,13 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
       const client = new WSClient(socket, playerId);
       setWsClient(client);
 
-      client.handlePositionUpdates((id, position) => {
+      client.handlePositionUpdates((id, position, velocity) => {
         setOtherPlayers((prevPlayers) => ({
           ...prevPlayers,
           [id]: {
             ...prevPlayers[id],
-            position,
+            targetPosition: position,
+            velocity: velocity ?? new THREE.Vector3(0, 0, 0),
           },
         }));
       });
@@ -73,16 +143,30 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
       });
 
       client.handleGameState((players) => {
-        setOtherPlayers(players);
+        const updatedPlayers: {[key: string]: PlayerState} = {};
+        Object.entries(players).forEach(([id, player]) => {
+          if (player && player.position) {
+            updatedPlayers[id] = {
+              ...player,
+              targetPosition: player.position.clone(),
+              velocity: player.velocity ?? new THREE.Vector3(0, 0, 0),
+            };
+          }
+        });
+        setOtherPlayers(updatedPlayers);
       });
 
-      client.handlePlayerSpawned((id, name, skin, position) => {
+      client.handlePlayerSpawned((id, name, skin, position, velocity) => {
         setOtherPlayers((prevPlayers) => ({
           ...prevPlayers,
           [id]: {
+            position: new THREE.Vector3(position.x, position.y, position.z),
+            velocity: velocity 
+              ? new THREE.Vector3(velocity.x, velocity.y, velocity.z)
+              : new THREE.Vector3(0, 0, 0),
+            targetPosition: new THREE.Vector3(position.x, position.y, position.z),
             name,
             skin,
-            position: new THREE.Vector3(position.x, position.y, position.z),
             score: 0,
           },
         }));
@@ -141,19 +225,7 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
           />
         )}
         
-        {Object.entries(otherPlayers).map(([id, player]) => (
-          id !== playerId && (
-          <BaseCharacter
-            key={id}
-            characterRadius={1}
-            playerName={player.name}
-            playerId={id}
-            position={player.position.toArray()}
-            score={player.score}
-            skin={player.skin}
-          />
-          )
-        ))}
+        <OtherPlayers players={otherPlayers} playerId={playerId} />
       </Physics>
     </Canvas>
   );

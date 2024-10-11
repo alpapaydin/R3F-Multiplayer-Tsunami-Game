@@ -1,4 +1,3 @@
-// components/characters/PlayerCharacter.tsx
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -6,14 +5,13 @@ import { vec3, useRapier } from '@react-three/rapier';
 import { useKeyboard } from '../../hooks/useKeyboard';
 import { useCameraControls } from '../CameraControls';
 import { RapierRigidBody } from '@react-three/rapier';
-import BaseCharacter from './BaseCharacter';  // Import the BaseCharacter component
+import BaseCharacter from './BaseCharacter';
 
-const JUMP_FORCE = 5;
-const MAX_VELOCITY = 100;
+const JUMP_FORCE = 50;
+const MAX_VELOCITY = 20;
 
 interface PlayerCharacterProps {
-
-  onPositionUpdate: (position: THREE.Vector3) => void;
+  onPositionUpdate: (position: THREE.Vector3, velocity: THREE.Vector3) => void;
   socket: WebSocket | null;
   playerId: string | null;
   playerName: string | null;
@@ -29,6 +27,7 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({ onPositionUpdate, soc
     const targetVelocity = useMemo(() => new THREE.Vector3(), []);
     const jumpDirection = useMemo(() => vec3({ x: 0, y: JUMP_FORCE, z: 0 }), []);
     const characterPosition = useMemo(() => new THREE.Vector3(), []);
+    const characterVelocity = useMemo(() => new THREE.Vector3(), []);
     const { rapier, world } = useRapier();
 
     useFrame((_, delta) => {
@@ -66,17 +65,11 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({ onPositionUpdate, soc
         // Update position and camera
         const translation = rigidBody.translation();
         characterPosition.set(translation.x, translation.y, translation.z);
+        characterVelocity.set(newVelocity.x, newVelocity.y, newVelocity.z);
         updateCamera(characterPosition);
-        onPositionUpdate(characterPosition);
-
-        // Send position update to server via WebSocket
-        if (socket && playerId) {
-            socket.send(JSON.stringify({
-                type: 'POSITION_UPDATE',
-                id: playerId,
-                position: { x: characterPosition.x, y: characterPosition.y, z: characterPosition.z }
-            }));
-        }
+        
+        // Call onPositionUpdate with both position and velocity
+        onPositionUpdate(characterPosition, characterVelocity);
     });
 
     return (

@@ -28,12 +28,13 @@ class WSClient {
 
   sendPosition(position: THREE.Vector3, velocity: THREE.Vector3) {
     if (this.socket && this.playerId) {
-      this.socket.send(JSON.stringify({
+      const message = JSON.stringify({
         type: 'POSITION_UPDATE',
         id: this.playerId,
         position: { x: position.x, y: position.y, z: position.z },
         velocity: { x: velocity.x, y: velocity.y, z: velocity.z },
-      }));
+      });
+      this.socket.send(message);
     }
   }
 
@@ -47,10 +48,13 @@ class WSClient {
     }
   }
 
-  handlePositionUpdates(updateHandler: (id: string, position: THREE.Vector3) => void) {
+  handlePositionUpdates(updateHandler: (id: string, position: THREE.Vector3, velocity?: THREE.Vector3) => void) {
     this.on('UPDATE_POSITION', (data) => {
       const position = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
-      updateHandler(data.id, position);
+      const velocity = data.velocity
+        ? new THREE.Vector3(data.velocity.x, data.velocity.y, data.velocity.z)
+        : undefined;
+      updateHandler(data.id, position, velocity);
     });
   }
 
@@ -60,12 +64,15 @@ class WSClient {
     });
   }
 
-  handleGameState(stateHandler: (players: { [key: string]: { position: THREE.Vector3; name: string; score: number; skin: string } }) => void) {
+  handleGameState(stateHandler: (players: { [key: string]: { position: THREE.Vector3; velocity?: THREE.Vector3; name: string; score: number; skin: string } }) => void) {
     this.on('GAME_STATE', (data) => {
-      const players: { [key: string]: { position: THREE.Vector3; name: string; score: number; skin: string } } = {};
+      const players: { [key: string]: { position: THREE.Vector3; velocity?: THREE.Vector3; name: string; score: number; skin: string } } = {};
       Object.keys(data.players).forEach((id) => {
         players[id] = {
           position: new THREE.Vector3(data.players[id].position.x, data.players[id].position.y, data.players[id].position.z),
+          velocity: data.players[id].velocity
+            ? new THREE.Vector3(data.players[id].velocity.x, data.players[id].velocity.y, data.players[id].velocity.z)
+            : undefined,
           name: data.players[id].playerName,
           score: data.players[id].score,
           skin: data.players[id].skin
@@ -75,9 +82,9 @@ class WSClient {
     });
   }
 
-  handlePlayerSpawned(spawnHandler: (id: string, name: string, skin: string, position: { x: number, y: number, z: number }) => void) {
+  handlePlayerSpawned(spawnHandler: (id: string, name: string, skin: string, position: { x: number, y: number, z: number }, velocity?: { x: number, y: number, z: number }) => void) {
     this.on('PLAYER_SPAWNED', (data) => {
-      spawnHandler(data.id, data.name, data.skin, data.position);
+      spawnHandler(data.id, data.name, data.skin, data.position, data.velocity);
     });
   }
 
