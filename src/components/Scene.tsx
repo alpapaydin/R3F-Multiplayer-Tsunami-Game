@@ -15,12 +15,13 @@ interface SceneProps {
   socket: WebSocket | null;
   playerId: string | null;
   mapSeed: number | null;
+  isPlayerSpawned: boolean;
 }
 
-const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName }) => {
+const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, playerSkin, isPlayerSpawned }) => {
   const [playerPosition, setPlayerPosition] = useState(new THREE.Vector3(0, 50, 0));
   const [otherPlayers, setOtherPlayers] = useState<{
-    [key: string]: { position: THREE.Vector3; name: string; score: number };
+    [key: string]: { position: THREE.Vector3; name: string; score: number; skin: string };
   }>({});
   const [wsClient, setWsClient] = useState<WSClient | null>(null);
 
@@ -30,12 +31,11 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName }) 
     wsClient?.sendPosition(newPosition, velocity);
   }, [wsClient]);
 
-  // Initialize WebSocket Client
   useEffect(() => {
-    if (socket && playerId && !wsClient) { // Ensure only one client is created
+    if (socket && playerId && !wsClient) {
       const client = new WSClient(socket, playerId);
       setWsClient(client);
-  
+
       client.handlePositionUpdates((id, position) => {
         setOtherPlayers((prevPlayers) => ({
           ...prevPlayers,
@@ -45,7 +45,7 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName }) 
           },
         }));
       });
-  
+
       client.handlePlayerDisconnects((id) => {
         setOtherPlayers((prevPlayers) => {
           const updatedPlayers = { ...prevPlayers };
@@ -53,21 +53,23 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName }) 
           return updatedPlayers;
         });
       });
-  
-      client.handleRegistration((players) => {
+
+      client.handleGameState((players) => {
         setOtherPlayers(players);
       });
-  
-      client.handleNameUpdates((id, name) => {
+
+      client.handlePlayerSpawned((id, name, skin, position) => {
         setOtherPlayers((prevPlayers) => ({
           ...prevPlayers,
           [id]: {
-            ...prevPlayers[id],
             name,
+            skin,
+            position: new THREE.Vector3(position.x, position.y, position.z),
+            score: 0,
           },
         }));
       });
-  
+
       client.handleScoreUpdates((id, score) => {
         setOtherPlayers((prevPlayers) => ({
           ...prevPlayers,
@@ -79,7 +81,6 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName }) 
       });
     }
   }, [socket, playerId, wsClient]);
-  
 
   return (
     <Canvas camera={{ position: [0, 50, 50], fov: 75 }}>
@@ -110,28 +111,31 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName }) 
           />
         )}
 
-        {/* Main player */}
-        <PlayerCharacter
-          characterRadius={1}
-          onPositionUpdate={handlePositionUpdate}
-          socket={socket}
-          playerId={playerId}
-          playerName={playerName}
-          score={0}
-        />
-        
-        {/* Render other players */}
-        {Object.keys(otherPlayers).map((id) => (
-        id !== playerId && ( // Skip rendering BaseCharacter if id matches playerId
-          <BaseCharacter
-            key={id}
+        {isPlayerSpawned && (
+          <PlayerCharacter
             characterRadius={1}
-            playerName={otherPlayers[id].name}
-            playerId={id}
-            position={otherPlayers[id].position.toArray()}
-            score={otherPlayers[id].score}
+            onPositionUpdate={handlePositionUpdate}
+            socket={socket}
+            playerId={playerId}
+            playerName={playerName}
+            skin={playerSkin}
+            score={0}
           />
-        )))}
+        )}
+        
+        {Object.keys(otherPlayers).map((id) => (
+          id !== playerId && (
+            <BaseCharacter
+              key={id}
+              characterRadius={1}
+              playerName={otherPlayers[id].name}
+              playerId={id}
+              position={otherPlayers[id].position.toArray()}
+              score={otherPlayers[id].score}
+              skin={otherPlayers[id].skin}
+            />
+          )
+        ))}
       </Physics>
     </Canvas>
   );

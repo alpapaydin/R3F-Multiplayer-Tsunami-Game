@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import WelcomeScreen from './components/UI/WelcomeScreen';
 import UserInputOverlay from './components/UI/UserInputOverlay';
 import Scene from './components/Scene';
@@ -12,18 +12,17 @@ const App: React.FC = () => {
   const [playerSkin, setPlayerSkin] = useState<string | null>(null);
   const [isPlayerSpawned, setIsPlayerSpawned] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
-  const [mapSeed, setMapSeed] = useState<number | null>(null); // New state for map seed
+  const [mapSeed, setMapSeed] = useState<number | null>(null);
 
   const handleConnected = (socket: WebSocket) => {
     setSocket(socket);
     setConnected(true);
 
-    // Listen for registration message and map seed
     socket.onmessage = (message) => {
       const data = JSON.parse(message.data);
       if (data.type === 'REGISTER') {
         setPlayerId(data.id);
-        setMapSeed(data.mapSeed); // Store the map seed
+        setMapSeed(data.mapSeed);
       }
     };
   };
@@ -33,26 +32,15 @@ const App: React.FC = () => {
     setPlayerSkin(skin);
     setHasStarted(true);
 
-    // Notify server about player name and skin
     if (socket && playerId) {
-      // Update the server with player name
       socket.send(JSON.stringify({
-        type: 'NAME_UPDATE',
-        id: playerId,
-        name: name,
-      }));
-
-      // Optionally, send the skin update too, if your game handles that
-      socket.send(JSON.stringify({
-        type: 'SPAWN_PLAYER',
+        type: 'PLAYER_SPAWN',
         id: playerId,
         name: name,
         skin: skin
       }));
 
-      setTimeout(() => {
-        setIsPlayerSpawned(true);
-      }, 1000);
+      setIsPlayerSpawned(true);
     }
   };
 
@@ -67,6 +55,7 @@ const App: React.FC = () => {
             socket={socket}
             playerId={playerId}
             mapSeed={mapSeed}
+            isPlayerSpawned={isPlayerSpawned}
           />
 
           {!hasStarted && <UserInputOverlay onPlay={handlePlay} />}

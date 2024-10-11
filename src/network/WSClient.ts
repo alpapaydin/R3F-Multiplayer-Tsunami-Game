@@ -1,4 +1,3 @@
-// network/WSClient.ts
 import * as THREE from 'three';
 
 class WSClient {
@@ -15,12 +14,10 @@ class WSClient {
     }
   }
 
-  // Register a custom event handler for specific message types
   on(eventType: string, handler: (data: any) => void) {
     this.eventHandlers[eventType] = handler;
   }
 
-  // Handle incoming WebSocket messages and trigger event handlers
   private handleMessage(message: MessageEvent) {
     const data = JSON.parse(message.data);
     const handler = this.eventHandlers[data.type];
@@ -29,7 +26,6 @@ class WSClient {
     }
   }
 
-  // Send position update
   sendPosition(position: THREE.Vector3, velocity: THREE.Vector3) {
     if (this.socket && this.playerId) {
       this.socket.send(JSON.stringify({
@@ -41,18 +37,6 @@ class WSClient {
     }
   }
 
-  // Send player name update
-  updateName(playerName: string) {
-    if (this.socket && this.playerId) {
-      this.socket.send(JSON.stringify({
-        type: 'NAME_UPDATE',
-        id: this.playerId,
-        name: playerName,
-      }));
-    }
-  }
-
-  // Send score update
   updateScore(score: number) {
     if (this.socket && this.playerId) {
       this.socket.send(JSON.stringify({
@@ -63,7 +47,6 @@ class WSClient {
     }
   }
 
-  // Internal listener for handling position updates
   handlePositionUpdates(updateHandler: (id: string, position: THREE.Vector3) => void) {
     this.on('UPDATE_POSITION', (data) => {
       const position = new THREE.Vector3(data.position.x, data.position.y, data.position.z);
@@ -71,36 +54,33 @@ class WSClient {
     });
   }
 
-  // Internal listener for handling player disconnects
   handlePlayerDisconnects(disconnectHandler: (id: string) => void) {
     this.on('PLAYER_DISCONNECT', (data) => {
       disconnectHandler(data.id);
     });
   }
 
-  // Internal listener for registering players
-  handleRegistration(registerHandler: (players: { [key: string]: { position: THREE.Vector3; name: string; score: number } }) => void) {
-    this.on('REGISTER', (data) => {
-      const players: { [key: string]: { position: THREE.Vector3; name: string; score: number } } = {};
+  handleGameState(stateHandler: (players: { [key: string]: { position: THREE.Vector3; name: string; score: number; skin: string } }) => void) {
+    this.on('GAME_STATE', (data) => {
+      const players: { [key: string]: { position: THREE.Vector3; name: string; score: number; skin: string } } = {};
       Object.keys(data.players).forEach((id) => {
         players[id] = {
           position: new THREE.Vector3(data.players[id].position.x, data.players[id].position.y, data.players[id].position.z),
           name: data.players[id].playerName,
-          score: data.players[id].score
+          score: data.players[id].score,
+          skin: data.players[id].skin
         };
       });
-      registerHandler(players);
+      stateHandler(players);
     });
   }
 
-  // Internal listener for handling name updates
-  handleNameUpdates(updateHandler: (id: string, name: string) => void) {
-    this.on('UPDATE_NAME', (data) => {
-      updateHandler(data.id, data.name);
+  handlePlayerSpawned(spawnHandler: (id: string, name: string, skin: string, position: { x: number, y: number, z: number }) => void) {
+    this.on('PLAYER_SPAWNED', (data) => {
+      spawnHandler(data.id, data.name, data.skin, data.position);
     });
   }
 
-  // Internal listener for handling score updates
   handleScoreUpdates(updateHandler: (id: string, score: number) => void) {
     this.on('UPDATE_SCORE', (data) => {
       updateHandler(data.id, data.score);
