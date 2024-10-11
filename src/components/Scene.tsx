@@ -10,10 +10,11 @@ import { CHUNK_SIZE, CHUNK_RES, HEIGHT_SCALE, NOISE_SCALE, RENDER_DISTANCE } fro
 import WSClient from '../network/WSClient';
 
 interface SceneProps {
+  playerName: string;
+  playerSkin: string;
   socket: WebSocket | null;
   playerId: string | null;
   mapSeed: number | null;
-  playerName: string | null;
 }
 
 const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName }) => {

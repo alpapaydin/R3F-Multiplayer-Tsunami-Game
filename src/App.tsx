@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import WelcomeScreen from './components/UI/WelcomeScreen';
 import UserInputOverlay from './components/UI/UserInputOverlay';
-import MainGame from './components/MainGame';
+import Scene from './components/Scene';
 import './App.css';
 
 const App: React.FC = () => {
@@ -61,7 +61,7 @@ const App: React.FC = () => {
       {!connected && <WelcomeScreen onConnected={handleConnected} />}
       {connected && (
         <>
-          <MainGame 
+          <Scene
             playerName={playerName ?? "Player"} 
             playerSkin={playerSkin ?? "default"}
             socket={socket}

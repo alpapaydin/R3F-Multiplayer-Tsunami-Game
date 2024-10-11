@@ -24,7 +24,7 @@ function broadcast(data, excludeWs) {
 wss.on('connection', (ws) => {
     // Generate a unique ID for the player
     const playerId = `player_${Date.now()}`;
-    
+    console.log(playerId, "connected")
     // Initialize the player with default values
     players[playerId] = {
         playerName: "",
