@@ -3,7 +3,7 @@ import React, { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RigidBody, RapierRigidBody } from '@react-three/rapier';
-import { ShaderMaterial } from 'three';
+import { Vector3, ShaderMaterial } from 'three';
 import NameTag from '../UI/NameTag';
 import { vertexShader, fragmentShader } from '../../shaders/PlayerShader';
 
@@ -36,10 +36,9 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({ playerId, playerName, pos
 
     useFrame((_, delta) => {
         if (!ref.current) return;
-
-        // Update position
-        const translation = ref.current.translation();
+        const translation = ref.current.translation()
         characterPosition.set(translation.x, translation.y, translation.z);
+        console.log(playerName)
         setNameTagPosition(new THREE.Vector3(translation.x, translation.y, translation.z));
 
         // Update shader time

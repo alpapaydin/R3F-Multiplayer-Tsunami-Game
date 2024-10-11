@@ -33,8 +33,16 @@ const App: React.FC = () => {
     setPlayerSkin(skin);
     setHasStarted(true);
 
-    // Notify server about player spawn
+    // Notify server about player name and skin
     if (socket && playerId) {
+      // Update the server with player name
+      socket.send(JSON.stringify({
+        type: 'NAME_UPDATE',
+        id: playerId,
+        name: name,
+      }));
+
+      // Optionally, send the skin update too, if your game handles that
       socket.send(JSON.stringify({
         type: 'SPAWN_PLAYER',
         id: playerId,
@@ -58,7 +66,7 @@ const App: React.FC = () => {
             playerSkin={playerSkin ?? "default"}
             socket={socket}
             playerId={playerId}
-            mapSeed={mapSeed} // Pass map seed to MainGame
+            mapSeed={mapSeed}
           />
 
           {!hasStarted && <UserInputOverlay onPlay={handlePlay} />}

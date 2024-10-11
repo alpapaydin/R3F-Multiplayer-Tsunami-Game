@@ -7,12 +7,25 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
+// Server state
 let players = {};
-const mapSeed = 31; // Generate a random seed once for the map
+const mapSeed = Math.floor(Math.random() * 100000); // Generate a random seed once for the map
+
+// Function to broadcast data to all clients except the sender
+function broadcast(data, excludeWs) {
+    wss.clients.forEach((client) => {
+        if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(data));
+        }
+    });
+}
 
 // Handle player connections
 wss.on('connection', (ws) => {
+    // Generate a unique ID for the player
     const playerId = `player_${Date.now()}`;
+    
+    // Initialize the player with default values
     players[playerId] = {
         playerName: "",
         position: { x: 0, y: 0, z: 0 },
@@ -20,34 +33,39 @@ wss.on('connection', (ws) => {
         score: 0,  // Initialize score
     };
 
-    // Send initial data to the newly connected client, including the mapSeed and other players
-    ws.send(JSON.stringify({ type: 'REGISTER', id: playerId, players, mapSeed }));
+    // Send the map seed and current player data to the newly connected client
+    ws.send(JSON.stringify({ 
+        type: 'REGISTER', 
+        id: playerId, 
+        players, 
+        mapSeed 
+    }));
 
-    // Handle messages from the client
+    // Listen for messages from the client
     ws.on('message', (message) => {
         const data = JSON.parse(message);
 
+        // Handle position updates
         if (data.type === 'POSITION_UPDATE') {
-            // Update the player's position and velocity in the server state
             if (players[data.id]) {
                 players[data.id].position = data.position;
                 players[data.id].velocity = data.velocity;
-            }
 
-            // Broadcast updated position to all other clients
-            broadcast({
-                type: 'UPDATE_POSITION',
-                id: data.id,
-                position: data.position,
-            }, ws);
+                // Broadcast the updated position to all other clients
+                broadcast({
+                    type: 'UPDATE_POSITION',
+                    id: data.id,
+                    position: data.position
+                }, ws);
+            }
         }
 
-        // Handle name update
+        // Handle name updates
         if (data.type === 'NAME_UPDATE') {
             if (players[data.id]) {
                 players[data.id].playerName = data.name;
 
-                // Broadcast the new name to all other clients
+                // Broadcast the updated name to all other clients
                 broadcast({
                     type: 'UPDATE_NAME',
                     id: data.id,
@@ -56,12 +74,12 @@ wss.on('connection', (ws) => {
             }
         }
 
-        // Handle score update
+        // Handle score updates
         if (data.type === 'SCORE_UPDATE') {
             if (players[data.id]) {
                 players[data.id].score = data.score;
 
-                // Broadcast the updated score to all clients
+                // Broadcast the updated score to all other clients
                 broadcast({
                     type: 'UPDATE_SCORE',
                     id: data.id,
@@ -71,21 +89,14 @@ wss.on('connection', (ws) => {
         }
     });
 
+    // Handle player disconnection
     ws.on('close', () => {
         delete players[playerId];
         broadcast({ type: 'PLAYER_DISCONNECT', id: playerId });
     });
 });
 
-// Function to broadcast to all clients except the sender
-const broadcast = (data, excludeWs) => {
-    wss.clients.forEach((client) => {
-        if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(data));
-        }
-    });
-};
-
+// Start the server
 server.listen(8080, () => {
     console.log('WebSocket server running on port 8080');
 });

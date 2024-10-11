@@ -125,15 +125,16 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName }) 
         
         {/* Render other players */}
         {Object.keys(otherPlayers).map((id) => (
+        id !== playerId && ( // Skip rendering BaseCharacter if id matches playerId
           <BaseCharacter
             key={id}
             characterRadius={1}
             playerName={otherPlayers[id].name}
             playerId={id}
             position={otherPlayers[id].position.toArray()}
-            score={otherPlayers[id].score} // Pass score to BaseCharacter if needed
+            score={otherPlayers[id].score}
           />
-        ))}
+        )))}
       </Physics>
     </Canvas>
   );
