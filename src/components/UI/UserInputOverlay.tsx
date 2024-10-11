@@ -27,8 +27,8 @@ const UserInputOverlay: React.FC<UserInputOverlayProps> = ({ onPlay }) => {
       <h3>Select a skin:</h3>
       <select value={skin} onChange={(e) => setSkin(e.target.value)}>
         <option value="default">Default</option>
-        <option value="blue">Blue</option>
-        <option value="red">Red</option>
+        <option value="rainbow">Rainbow</option>
+        <option value="glow">Glow</option>
       </select>
       <button onClick={handlePlay}>PLAY</button>
     </div>

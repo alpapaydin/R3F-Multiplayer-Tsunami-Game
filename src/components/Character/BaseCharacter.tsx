@@ -1,10 +1,9 @@
-import React, { useRef, useMemo, useState, useEffect } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RigidBody, RapierRigidBody, CollisionEnterPayload, CollisionExitPayload, interactionGroups } from '@react-three/rapier';
-import { Vector3, ShaderMaterial } from 'three';
 import NameTag from '../UI/NameTag';
-import { vertexShader, fragmentShader } from '../../shaders/PlayerShader';
+import { skins } from './skins'; // Import skins from skins.ts
 
 interface BaseCharacterProps {
   playerId: string | null;
@@ -24,55 +23,62 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
   position = [0, 25, 0],
   rigidBodyRef,
   characterRadius,
+  skin, // The skin prop that determines which shader/uniforms to apply
   onCollisionEnter,
   onCollisionExit
 }) => {
-    const internalRigidBodyRef = useRef<RapierRigidBody>(null);
-    const ref = rigidBodyRef || internalRigidBodyRef;
-    const meshRef = useRef<THREE.Mesh>(null);
-    const shaderMaterial = useMemo(() => new ShaderMaterial({
-      vertexShader,
-      fragmentShader,
-      uniforms: {
-          time: { value: 0 },
-          color: { value: new THREE.Color(0x0055ff) },
-      },
-      transparent: true,
-    }), []);
+  const internalRigidBodyRef = useRef<RapierRigidBody>(null);
+  const ref = rigidBodyRef || internalRigidBodyRef;
+  const meshRef = useRef<THREE.Mesh>(null);
 
-    const [characterPosition, setCharacterPosition] = useState(new THREE.Vector3(...position));
+  // Use the skin prop to dynamically select shader and uniforms
+  const { shader, uniforms } = useMemo(() => skins[skin] || skins.default, [skin]);
 
-    useFrame((_, delta) => {
-        if (!ref.current) return;
-        const translation = ref.current.translation();
-        const newPosition = new THREE.Vector3(translation.x, translation.y, translation.z);
-        setCharacterPosition(newPosition);
+  // Memoized shader material
+  const shaderMaterial = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        vertexShader: shader.vertexShader,
+        fragmentShader: shader.fragmentShader,
+        uniforms: uniforms,
+        transparent: true,
+      }),
+    [shader, uniforms]
+  );
 
-        // Update shader time
-        shaderMaterial.uniforms.time.value += delta;
-    });
+  const [characterPosition, setCharacterPosition] = useState(new THREE.Vector3(...position));
 
-    return (
-        <>
-            <RigidBody
-                collisionGroups={interactionGroups(1,2)}
-                ref={ref}
-                colliders="ball"
-                gravityScale={5}
-                position={position}
-                linearDamping={0.95}
-                angularDamping={0.95}
-                onCollisionEnter={onCollisionEnter}
-                onCollisionExit={onCollisionExit}
-            >
-                <mesh ref={meshRef} castShadow>
-                    <sphereGeometry args={[characterRadius, 32, 32]} />
-                    <primitive object={shaderMaterial} attach="material" />
-                </mesh>
-            </RigidBody>
-            <NameTag name={playerName} position={characterPosition} />
-        </>
-    );
+  useFrame((_, delta) => {
+    if (!ref.current) return;
+    const translation = ref.current.translation();
+    const newPosition = new THREE.Vector3(translation.x, translation.y, translation.z);
+    setCharacterPosition(newPosition);
+
+    // Update shader's time uniform
+    shaderMaterial.uniforms.time.value += delta;
+  });
+
+  return (
+    <>
+      <RigidBody
+        collisionGroups={interactionGroups(1, 2)}
+        ref={ref}
+        colliders="ball"
+        gravityScale={5}
+        position={position}
+        linearDamping={0.95}
+        angularDamping={0.95}
+        onCollisionEnter={onCollisionEnter}
+        onCollisionExit={onCollisionExit}
+      >
+        <mesh ref={meshRef} castShadow>
+          <sphereGeometry args={[characterRadius, 32, 32]} />
+          <primitive object={shaderMaterial} attach="material" />
+        </mesh>
+      </RigidBody>
+      <NameTag name={playerName} position={characterPosition} />
+    </>
+  );
 };
 
 export default BaseCharacter;

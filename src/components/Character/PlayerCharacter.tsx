@@ -72,7 +72,6 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
         const jumpRay = new rapier.Ray({ x: position.x, y: position.y, z: position.z }, { x: 0, y: -1, z: 0 });
         const hit = world.castRay(jumpRay, characterRadius + 1.1, true, undefined, interactionGroups(1));
         setIsGrounded(!!hit); // Set isGrounded based on raycast hit
-        console.log(hit)
         // Jumping logic
         if (keys.space && isGrounded) {
             rigidBody.applyImpulse(jumpDirection, true);
