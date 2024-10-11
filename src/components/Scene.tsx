@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { Sky } from '@react-three/drei';
 import Terrain from './Terrain';
@@ -184,9 +184,29 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
     }
   }, [socket, playerId, wsClient]);
 
+  const GlobalSky = () => {
+    const { camera } = useThree();
+    
+    useFrame(() => {
+      if (camera) {
+        camera.updateMatrixWorld();
+        camera.updateProjectionMatrix();
+      }
+    });
+  
+    return (
+      <Sky 
+        distance={450000} 
+        sunPosition={[100, 100, 20]} 
+        inclination={0}
+        azimuth={0.25}
+      />
+    );
+  };
+
   return (
     <Canvas camera={{ position: [0, 50, 50], fov: 75 }}>
-      <Sky sunPosition={[100, 100, 20]} />
+      <GlobalSky />
       <ambientLight intensity={0.3} />
       <directionalLight 
         position={[10, 10, 10]} 
