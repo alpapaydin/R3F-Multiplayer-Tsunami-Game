@@ -1,4 +1,3 @@
-// src/systems/biomes.ts
 import { Color } from 'three';
 
 export interface PropType {
@@ -30,7 +29,7 @@ export const Biomes: Record<string, Biome> = {
   MOUNTAINS: {
     name: 'Mountains',
     color: new Color(0x808080),
-    heightMultiplier: 2,
+    heightMultiplier: 4,
     roughness: 1,
     props: [
       { name: 'Rock', probability: 0.6, minScale: 0.5, maxScale: 2 },
@@ -59,19 +58,61 @@ export const Biomes: Record<string, Biome> = {
   },
 };
 
-export function getBiome(temperature: number, humidity: number): Biome {
-  if (temperature > 0.6 && humidity < 0.3) return Biomes.DESERT;
-  if (temperature < 0.3 && humidity > 0.6) return Biomes.FOREST;
-  if (temperature > 0.7 && humidity > 0.7) return Biomes.MOUNTAINS;
-  return Biomes.PLAINS;
+// Radial falloff function to control how much the mountains "grow" toward the center
+function falloff(distance: number): number {
+  return Math.pow(1 - distance, 2); // Quadratic falloff for smooth transition
+}
+
+// Interpolate between two values using falloff
+function interpolateValue(value1: number, value2: number, t: number): number {
+  const falloffT = falloff(t);
+  return value1 * (1 - falloffT) + value2 * falloffT;
+}
+
+export function getBiome(temperature: number, humidity: number, blendFactor: number = 0.3): Biome {
+  let biome1: Biome, biome2: Biome;
+  let t = 0; // Blending factor
+
+  // Assign primary and secondary biomes based on temperature and humidity ranges
+  if (temperature > 0.7 && humidity < 0.3) {
+    biome1 = Biomes.DESERT;
+    biome2 = Biomes.PLAINS;
+    t = (temperature - 0.7) / (0.3 + blendFactor); // Blend wider based on blendFactor
+  } else if (temperature < 0.3 && humidity > 0.6) {
+    biome1 = Biomes.FOREST;
+    biome2 = Biomes.PLAINS;
+    t = (humidity - 0.6) / (0.4 + blendFactor); // Blend based on humidity with blendFactor
+  } else if (temperature > 0.7 && humidity > 0.7) {
+    biome1 = Biomes.MOUNTAINS;
+    biome2 = Biomes.PLAINS;
+    t = Math.min((temperature - 0.7) / (0.3 + blendFactor), (humidity - 0.7) / (0.3 + blendFactor)); // Blend based on both temperature and humidity
+  } else {
+    biome1 = Biomes.PLAINS;
+    biome2 = Biomes.FOREST;
+    t = temperature / (0.7 + blendFactor); // Blend based on temperature with a smoother transition
+  }
+
+  // Clamp t between 0 and 1 for safety
+  t = Math.max(0, Math.min(1, t));
+
+  // Interpolate between the two biomes' properties using a falloff function
+  return interpolateBiomes(biome1, biome2, t);
 }
 
 export function interpolateBiomes(biome1: Biome, biome2: Biome, t: number): Biome {
   return {
     name: t < 0.5 ? biome1.name : biome2.name,
-    color: biome1.color.clone().lerp(biome2.color, t),
-    heightMultiplier: biome1.heightMultiplier * (1 - t) + biome2.heightMultiplier * t,
-    roughness: biome1.roughness * (1 - t) + biome2.roughness * t,
-    props: t < 0.5 ? biome1.props : biome2.props, // Use props from the dominant biome
+    color: biome1.color.clone().lerp(biome2.color, t),  // Blend colors
+    heightMultiplier: interpolateValue(biome1.heightMultiplier, biome2.heightMultiplier, t), // Gradual height change with falloff
+    roughness: interpolateValue(biome1.roughness, biome2.roughness, t), // Gradual roughness change with falloff
+    props: biome1.props.concat(biome2.props) // Combine props from both biomes
+  };
+}
+
+export function getDominantBiomeProps(temperature: number, humidity: number, blendFactor: number = 0.3): { name: string, props: PropType[] } {
+  const biome = getBiome(temperature, humidity, blendFactor);
+  return {
+    name: biome.name,
+    props: biome.props
   };
 }

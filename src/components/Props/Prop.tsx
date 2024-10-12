@@ -1,7 +1,6 @@
 // src/components/Props/Prop.tsx
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
 import { PropInstance } from '../../systems/PropSpawner';
 
 interface PropProps {
@@ -65,7 +64,7 @@ const Prop: React.FC<PropProps> = ({ instances, type }) => {
       });
       meshRef.current.instanceMatrix.needsUpdate = true;
     }
-  }, [instances]);
+  }, );
 
   return (
     <instancedMesh
