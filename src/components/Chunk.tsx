@@ -14,6 +14,7 @@ interface ChunkProps {
   getBiomeAt: (x: number, z: number) => Biome;
   propSpawner: PropSpawner;
   chunkKey: string;
+  material: THREE.Material;
 }
 
 const Chunk: React.FC<ChunkProps> = ({
@@ -26,6 +27,7 @@ const Chunk: React.FC<ChunkProps> = ({
   getBiomeAt,
   propSpawner,
   chunkKey,
+  material,
 }) => {
   const [chunkX, _, chunkZ] = position;
   const [props, setProps] = useState<PropInstance[]>([]);
@@ -52,6 +54,7 @@ const Chunk: React.FC<ChunkProps> = ({
         const heightValue = (heightNoise(worldX * noiseScale, worldZ * noiseScale) + 1) * biome.roughness;
         const height = (heightValue + variation) * heightScale * biome.heightMultiplier;
 
+
         vertices.push(x, height, z);
         colors.push(biome.color.r, biome.color.g, biome.color.b);
 
@@ -72,11 +75,6 @@ const Chunk: React.FC<ChunkProps> = ({
 
     return geo;
   }, [position, size, resolution, heightScale, noiseScale, heightNoise, getBiomeAt, chunkKey]);
-
-  const material = useMemo(() => new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    roughness: 0.8,
-  }), []);
 
   useEffect(() => {
     const generateProps = async () => {

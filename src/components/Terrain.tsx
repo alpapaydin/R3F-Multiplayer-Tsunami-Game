@@ -4,9 +4,10 @@ import { createNoise2D } from 'simplex-noise';
 import { RigidBody, interactionGroups } from '@react-three/rapier';
 import Chunk from './Chunk';
 import { getBiome, Biome } from '../systems/biomes';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import alea from 'alea';
 import { PropSpawner } from '../systems/PropSpawner';
+import createBlendedTerrainMaterial from '../shaders/TerrainShader'; // Import shader
 
 interface TerrainProps {
   chunkSize: number;
@@ -32,6 +33,7 @@ const Terrain: React.FC<TerrainProps> = ({
   renderDistance,
   mapSeed,
 }) => {
+  const { gl } = useThree(); // Get renderer from useThree
   const [loadedChunks, setLoadedChunks] = useState<ChunkData[]>([]);
   const prng = useMemo(() => alea(mapSeed), [mapSeed]);
   const heightNoise = useRef(createNoise2D(prng));
@@ -39,6 +41,28 @@ const Terrain: React.FC<TerrainProps> = ({
   const humidityNoise = useRef(createNoise2D(prng));
   const previousPlayerChunk = useRef<{ x: number; z: number } | null>(null);
   const propSpawner = useMemo(() => new PropSpawner(mapSeed), [mapSeed]);
+
+  const heightTexture = useMemo(() => {
+    const size = chunkResolution * chunkResolution;
+    const data = new Float32Array(size);
+
+    // Generate height data and convert it to texture
+    for (let i = 0; i < size; i++) {
+      const x = i % chunkResolution;
+      const z = Math.floor(i / chunkResolution);
+      const heightValue = heightNoise.current(x * noiseScale, z * noiseScale);
+      data[i] = heightValue;
+    }
+
+    const heightTexture = new THREE.DataTexture(data, chunkResolution, chunkResolution, THREE.LuminanceFormat, THREE.FloatType);
+    heightTexture.needsUpdate = true;
+    return heightTexture;
+  }, [chunkResolution, noiseScale, heightNoise]);
+
+  const material = useMemo(() => {
+    return createBlendedTerrainMaterial(heightTexture);
+  }, [heightTexture]);
+  
   const getChunkKey = useCallback((x: number, z: number): string => {
     return `${Math.floor(x / chunkSize)},${Math.floor(z / chunkSize)}`;
   }, [chunkSize]);
@@ -136,6 +160,7 @@ const Terrain: React.FC<TerrainProps> = ({
             getBiomeAt={getBiomeAt}
             propSpawner={propSpawner}
             chunkKey={chunk.key}
+            material={material}
           />
         </RigidBody>
       ))}

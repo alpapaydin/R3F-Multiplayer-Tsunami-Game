@@ -1,76 +1,68 @@
 import * as THREE from 'three';
 
-// Define vertex and fragment shaders
-const vertexShader = `
-  uniform float u_heightMultiplier;
-  uniform sampler2D u_heightMap;
-  uniform sampler2D u_temperatureMap;
-  uniform sampler2D u_humidityMap;
-
-  varying float v_height;
-  varying float v_temperature;
-  varying float v_humidity;
-
-  void main() {
-    vec4 heightData = texture2D(u_heightMap, uv);
-    vec4 tempData = texture2D(u_temperatureMap, uv);
-    vec4 humidityData = texture2D(u_humidityMap, uv);
-
-    v_height = heightData.r * u_heightMultiplier;
-    v_temperature = tempData.r;
-    v_humidity = humidityData.r;
-
-    vec3 newPosition = position + normal * v_height;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
-  }
-`;
-
-const fragmentShader = `
-  uniform vec3 u_colorPlains;
-  uniform vec3 u_colorMountains;
-  uniform vec3 u_colorDesert;
-  uniform vec3 u_colorForest;
-
-  varying float v_height;
-  varying float v_temperature;
-  varying float v_humidity;
-
-  void main() {
-    vec3 color;
-
-    // Select biome color based on temperature and humidity
-    if (v_temperature > 0.7 && v_humidity < 0.3) {
-      color = u_colorDesert;  // Desert biome
-    } else if (v_temperature < 0.3 && v_humidity > 0.6) {
-      color = u_colorForest;  // Forest biome
-    } else if (v_temperature > 0.7 && v_humidity > 0.7) {
-      color = u_colorMountains;  // Mountains biome
-    } else {
-      color = u_colorPlains;  // Plains biome
-    }
-
-    // Apply height-based shading (darker at lower heights)
-    float heightFactor = smoothstep(0.0, 1.0, v_height);
-    color *= mix(vec3(0.5), vec3(1.0), heightFactor);
-
-    gl_FragColor = vec4(color, 1.0);
-  }
-`;
-
-// Create and export the shader material
-export function createTerrainMaterial(heightMap, temperatureMap, humidityMap) {
-  return new THREE.ShaderMaterial({
-    uniforms: {
-      u_heightMap: { value: heightMap },
-      u_temperatureMap: { value: temperatureMap },
-      u_humidityMap: { value: humidityMap },
-      u_heightMultiplier: { value: 10.0 },
-      u_colorPlains: { value: new THREE.Color(0x7cfc00) },
-      u_colorMountains: { value: new THREE.Color(0x808080) },
-      u_colorDesert: { value: new THREE.Color(0xffd700) },
-      u_colorForest: { value: new THREE.Color(0x228b22) },
-    },
-    vertexShader,
-    fragmentShader,
+// Function to blend height-based shader effects into a MeshStandardMaterial
+const createBlendedTerrainMaterial = (heightTexture: THREE.Texture) => {
+  const mat = new THREE.MeshStandardMaterial({
+    vertexColors: true,  // Keep vertex color blending
+    roughness: 0.9,
+    metalness: 0.9, 
   });
-}
+  /*
+  // Use onBeforeCompile to inject height-based logic
+  mat.onBeforeCompile = (shader) => {
+    // Inject the uniform for the height map and height multiplier
+    shader.uniforms.u_heightMap = { value: heightTexture };
+    shader.uniforms.u_heightMultiplier = { value: 10.0 };
+
+    // Add custom vertex shader code to calculate height-based displacement
+    shader.vertexShader = shader.vertexShader.replace(
+      `#include <common>`,
+      `#include <common>
+       uniform sampler2D u_heightMap;
+       uniform float u_heightMultiplier;
+       varying float v_height;
+      `
+    );
+
+    shader.vertexShader = shader.vertexShader.replace(
+      `#include <begin_vertex>`,
+      `
+      // Sample the height map and calculate height displacement
+      vec4 heightData = texture2D(u_heightMap, uv);
+      v_height = heightData.r * u_heightMultiplier;
+      
+      // Displace the vertex position based on the height
+      vec3 transformed = position + normal * v_height;
+      `
+    );
+
+    // Add custom fragment shader code to blend based on height
+    shader.fragmentShader = shader.fragmentShader.replace(
+      `#include <dithering_fragment>`,
+      `
+      varying float v_height;
+
+      // Apply color blending based on height
+      vec3 heightColor;
+
+      if (v_height < 0.3) {
+        heightColor = mix(vec3(0.2, 0.5, 0.2), vec3(0.6, 0.3, 0.2), v_height / 0.3);  // Dark green to brown
+      } else if (v_height < 0.6) {
+        heightColor = mix(vec3(0.6, 0.3, 0.2), vec3(0.8, 0.8, 0.6), (v_height - 0.3) / 0.3);  // Brown to light beige
+      } else {
+        heightColor = mix(vec3(0.8, 0.8, 0.6), vec3(1.0, 1.0, 1.0), (v_height - 0.6) / 0.4);  // Light beige to white
+      }
+
+      // Blend the height color with the standard diffuse color
+      vec3 finalColor = mix(diffuseColor.rgb, heightColor, 0.5);  // Blend 50% with the height color
+
+      // Set the final fragment color with full opacity (no transparency)
+      gl_FragColor = vec4(finalColor, 1.0);  // Full opacity
+      `
+    );
+  };
+  */
+  return mat;
+};
+
+export default createBlendedTerrainMaterial;
