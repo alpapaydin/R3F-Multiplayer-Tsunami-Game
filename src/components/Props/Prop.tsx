@@ -13,7 +13,6 @@ const Prop: React.FC<PropProps> = ({ instances, type }) => {
   const tempObject = new THREE.Object3D();
 
   const getPropGeometry = () => {
-    console.log("PROP RENDER")
     switch (type) {
       case 'Tree':
         return new THREE.CylinderGeometry(0.2, 0.4, 2, 8);

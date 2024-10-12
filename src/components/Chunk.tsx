@@ -33,7 +33,7 @@ const Chunk: React.FC<ChunkProps> = ({
   const [props, setProps] = useState<PropInstance[]>([]);
 
   const geometry = useMemo(() => {
-    console.log(`Generating geometry for chunk ${chunkKey}`);
+    //console.log(`Generating geometry for chunk ${chunkKey}`);
     const geo = new THREE.BufferGeometry();
     const vertices: number[] = [];
     const colors: number[] = [];
@@ -78,7 +78,7 @@ const Chunk: React.FC<ChunkProps> = ({
 
   useEffect(() => {
     const generateProps = async () => {
-      console.log(`Generating props for chunk ${chunkKey}`);
+      //console.log(`Generating props for chunk ${chunkKey}`);
       const chunkProps = await propSpawner.generatePropsForChunk(
         chunkX / size,
         chunkZ / size,
@@ -86,7 +86,7 @@ const Chunk: React.FC<ChunkProps> = ({
         getBiomeAt(chunkX, chunkZ),
         (x, z) => heightNoise(x * noiseScale, z * noiseScale) * heightScale
       );
-      console.log(`Generated ${chunkProps.length} props for chunk ${chunkKey}`);
+      //console.log(`Generated ${chunkProps.length} props for chunk ${chunkKey}`);
       setProps(chunkProps);
     };
 
@@ -104,8 +104,8 @@ const Chunk: React.FC<ChunkProps> = ({
   }, [props]);
 
   useEffect(() => {
-    console.log(`Chunk ${chunkKey} rendered with ${props.length} props`);
-    console.log('Grouped props:', groupedProps);
+    //console.log(`Chunk ${chunkKey} rendered with ${props.length} props`);
+    //console.log('Grouped props:', groupedProps);
   }, [chunkKey, props, groupedProps]);
 
   return (

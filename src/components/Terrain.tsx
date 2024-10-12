@@ -83,7 +83,7 @@ const Terrain: React.FC<TerrainProps> = ({
       setTimeout(() => {
         setLoadedChunks(prevChunks => {
           if (!prevChunks.some(chunk => chunk.key === chunkData.key)) {
-            console.log(`Loaded chunk: ${chunkData.key}`);
+            //console.log(`Loaded chunk: ${chunkData.key}`);
             return [...prevChunks, chunkData];
           }
           return prevChunks;

@@ -16,7 +16,7 @@ export class PropSpawner {
   constructor(private seed: number) {
     const prng = alea(seed);
     this.propNoise = createNoise3D(prng);
-    console.log(`PropSpawner initialized with seed: ${seed}`);
+    //console.log(`PropSpawner initialized with seed: ${seed}`);
   }
 
   async generatePropsForChunk(
@@ -35,7 +35,7 @@ export class PropSpawner {
         const gridSize = 4; // Adjust this value to control prop density
         const cellSize = chunkSize / gridSize;
 
-        console.log(`Generating props for chunk (${chunkX}, ${chunkZ}), biome: ${biome.name}`);
+        //console.log(`Generating props for chunk (${chunkX}, ${chunkZ}), biome: ${biome.name}`);
 
         for (let gridX = 0; gridX < gridSize; gridX++) {
           for (let gridZ = 0; gridZ < gridSize; gridZ++) {
@@ -69,9 +69,9 @@ export class PropSpawner {
           }
         }
 
-        console.log(`Generated ${props.length} props for chunk (${chunkX}, ${chunkZ})`);
+        //console.log(`Generated ${props.length} props for chunk (${chunkX}, ${chunkZ})`);
         if (props.length === 0) {
-          console.warn(`No props generated for chunk (${chunkX}, ${chunkZ}). Biome: ${biome.name}, Prop types:`, biome.props);
+          //console.warn(`No props generated for chunk (${chunkX}, ${chunkZ}). Biome: ${biome.name}, Prop types:`, biome.props);
         }
         resolve(props);
       }, 0);
