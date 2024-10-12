@@ -8,7 +8,7 @@ import BaseCharacter from './Character/BaseCharacter';
 import * as THREE from 'three';
 import { CHUNK_SIZE, CHUNK_RES, HEIGHT_SCALE, NOISE_SCALE, RENDER_DISTANCE } from '../constants';
 import WSClient from '../network/WSClient';
-
+import Hud from './UI/Hud';
 // Define constants for position update optimization
 const POSITION_UPDATE_THRESHOLD = 0.05; // Minimum distance (in units) to trigger an update
 const POSITION_UPDATE_INTERVAL = 100; // Minimum time (in ms) between updates
@@ -205,6 +205,7 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
   };
 
   return (
+    <>
     <Canvas camera={{ position: [0, 50, 50], fov: 75 }}>
       <GlobalSky />
       <ambientLight intensity={0.3} />
@@ -248,6 +249,9 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
         <OtherPlayers players={otherPlayers} playerId={playerId} />
       </Physics>
     </Canvas>
+    
+    <Hud players={otherPlayers} currentPlayerId={playerId} />
+    </>
   );
 };
 

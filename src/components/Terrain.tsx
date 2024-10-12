@@ -4,7 +4,7 @@ import { createNoise2D } from 'simplex-noise';
 import { RigidBody, interactionGroups } from '@react-three/rapier';
 import Chunk from './Chunk';
 import { getBiome, Biome } from '../systems/biomes';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import alea from 'alea';
 import { PropSpawner } from '../systems/PropSpawner';
 import createBlendedTerrainMaterial from '../shaders/TerrainShader'; // Import shader
@@ -33,7 +33,6 @@ const Terrain: React.FC<TerrainProps> = ({
   renderDistance,
   mapSeed,
 }) => {
-  const { gl } = useThree(); // Get renderer from useThree
   const [loadedChunks, setLoadedChunks] = useState<ChunkData[]>([]);
   const prng = useMemo(() => alea(mapSeed), [mapSeed]);
   const heightNoise = useRef(createNoise2D(prng));

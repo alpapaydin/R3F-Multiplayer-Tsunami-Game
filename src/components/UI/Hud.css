@@ -1,0 +1,47 @@
+.hud-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px;
+  border-radius: 5px;
+  font-family: Arial, sans-serif;
+}
+
+.hud-title {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  text-align: center;
+}
+
+.hud-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.hud-table th,
+.hud-table td {
+  padding: 5px;
+  text-align: left;
+}
+
+.hud-table th:last-child,
+.hud-table td:last-child {
+  text-align: right;
+}
+
+.current-player {
+  background-color: rgba(62, 210, 29, 0.586);
+  font-weight: bold;
+}
+
+.spacer {
+  height: 10px;
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.spacer td {
+  text-align: center;
+}

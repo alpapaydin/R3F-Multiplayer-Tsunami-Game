@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import WelcomeScreen from './components/UI/WelcomeScreen';
 import UserInputOverlay from './components/UI/UserInputOverlay';
 import Scene from './components/Scene';

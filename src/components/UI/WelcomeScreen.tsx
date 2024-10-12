@@ -1,6 +1,6 @@
 // WelcomeScreen.tsx
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { WS_URL } from '../../constants';
 import './WelcomeScreen.css';
 
