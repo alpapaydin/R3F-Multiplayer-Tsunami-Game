@@ -6,9 +6,11 @@ import Terrain from './Terrain';
 import PlayerCharacter from './Character/PlayerCharacter';
 import BaseCharacter from './Character/BaseCharacter';
 import * as THREE from 'three';
-import { CHUNK_SIZE, CHUNK_RES, HEIGHT_SCALE, NOISE_SCALE, RENDER_DISTANCE } from '../constants';
+import { CHUNK_SIZE, CHUNK_RES, HEIGHT_SCALE, NOISE_SCALE, RENDER_DISTANCE, ENABLE_DEBUG } from '../constants';
 import WSClient from '../network/WSClient';
 import Hud from './UI/Hud';
+import DebugPanel from './UI/DebugPanel';
+
 // Define constants for position update optimization
 const POSITION_UPDATE_THRESHOLD = 0.05; // Minimum distance (in units) to trigger an update
 const POSITION_UPDATE_INTERVAL = 100; // Minimum time (in ms) between updates
@@ -67,6 +69,7 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
   const [playerVelocity, setPlayerVelocity] = useState(new THREE.Vector3(0, 0, 0));
   const [otherPlayers, setOtherPlayers] = useState<{[key: string]: PlayerState}>({});
   const [wsClient, setWsClient] = useState<WSClient | null>(null);
+  const [latency, setLatency] = useState(0);
 
   const lastUpdatePosition = useRef(new THREE.Vector3(0, 50, 0));
   const lastUpdateTime = useRef(0);
@@ -181,9 +184,25 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
           },
         }));
       });
+
+      if (ENABLE_DEBUG) {
+        client.handleLatencyUpdate((newLatency) => {
+          setLatency(newLatency);
+        });
+      }
     }
   }, [socket, playerId, wsClient]);
+  
+  useEffect(() => {
+    if (ENABLE_DEBUG && wsClient) {
+      const intervalId = setInterval(() => {
+        wsClient.measureLatency();
+      }, 1000); // Measure latency every 5 seconds
 
+      return () => clearInterval(intervalId);
+    }
+  }, [wsClient]);
+  
   const GlobalSky = () => {
     const { camera } = useThree();
     
@@ -251,6 +270,7 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
     </Canvas>
     
     <Hud players={otherPlayers} currentPlayerId={playerId} />
+    {ENABLE_DEBUG && <DebugPanel latency={latency} position={playerPosition} />}
     </>
   );
 };

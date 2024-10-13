@@ -4,6 +4,7 @@ class WSClient {
   private socket: WebSocket | null = null;
   private playerId: string | null = null;
   private eventHandlers: { [key: string]: (data: any) => void } = {};
+  private pingStartTime: number = 0;
 
   constructor(socket: WebSocket | null, playerId: string | null) {
     this.socket = socket;
@@ -92,6 +93,26 @@ class WSClient {
     this.on('UPDATE_SCORE', (data) => {
       updateHandler(data.id, data.score);
     });
+  }
+
+  handleLatencyUpdate(updateHandler: (latency: number) => void) {
+    this.on('PONG', (data) => {
+      const latency = Date.now() - this.pingStartTime;
+      updateHandler(latency);
+    });
+  }
+
+  measureLatency() {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN && this.playerId) {
+      this.pingStartTime = Date.now();
+      const message = JSON.stringify({
+        type: 'PING',
+        id: this.playerId
+      });
+      this.socket.send(message);
+    } else {
+      console.error('Cannot send PING: Socket not open or playerId not set');
+    }
   }
 }
 
