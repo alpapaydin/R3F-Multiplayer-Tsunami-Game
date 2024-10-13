@@ -10,6 +10,7 @@ import { CHUNK_SIZE, CHUNK_RES, HEIGHT_SCALE, NOISE_SCALE, RENDER_DISTANCE, ENAB
 import WSClient from '../network/WSClient';
 import Hud from './UI/Hud';
 import DebugPanel from './UI/DebugPanel';
+import Chat from './UI/Chat';
 
 // Define constants for position update optimization
 const POSITION_UPDATE_THRESHOLD = 0.05; // Minimum distance (in units) to trigger an update
@@ -270,6 +271,7 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
     </Canvas>
     
     <Hud players={otherPlayers} currentPlayerId={playerId} />
+    <Chat playerId={playerId} playerName={playerName} socket={socket} />
     {ENABLE_DEBUG && <DebugPanel latency={latency} position={playerPosition} />}
     </>
   );

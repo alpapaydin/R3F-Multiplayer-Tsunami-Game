@@ -71,7 +71,6 @@ wss.on('connection', (ws) => {
                     }, ws);
                 }
                 break;
-
             case 'PLAYER_SPAWN':
                 if (players[data.id]) {
                     console.log(message)
@@ -87,7 +86,6 @@ wss.on('connection', (ws) => {
                     });
                 }
                 break;
-
             case 'SCORE_UPDATE':
                 if (players[data.id]) {
                     players[data.id].score = data.score;
@@ -98,13 +96,21 @@ wss.on('connection', (ws) => {
                     }, ws);
                 }
                 break;
-
+            case 'CHAT_MESSAGE':
+                if (players[data.id]) {
+                    broadcast({
+                        type: 'CHAT_MESSAGE',
+                        id: data.id,
+                        playerName: players[data.id].playerName,
+                        message: data.message
+                    });
+                }
+                break;
             case 'PING':
                 ws.send(JSON.stringify({
                     type: 'PONG'
                 }));
                 break;
-
             default:
                 break;
         }
