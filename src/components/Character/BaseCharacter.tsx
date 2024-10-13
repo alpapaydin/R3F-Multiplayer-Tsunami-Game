@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useCallback } from 'react';
+import React, { useRef, useMemo, useCallback, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RigidBody, RapierRigidBody, CollisionEnterPayload, CollisionExitPayload, interactionGroups } from '@react-three/rapier';
@@ -15,6 +15,7 @@ interface BaseCharacterProps {
   skin: string;
   onCollisionEnter?: (event: CollisionEnterPayload) => void;
   onCollisionExit?: (event: CollisionExitPayload) => void;
+  socket: WebSocket | null;
 }
 
 const BaseCharacter: React.FC<BaseCharacterProps> = ({
@@ -25,7 +26,8 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
   characterRadius,
   skin,
   onCollisionEnter,
-  onCollisionExit
+  onCollisionExit,
+  socket
 }) => {
   const internalRigidBodyRef = useRef<RapierRigidBody>(null);
   const ref = rigidBodyRef || internalRigidBodyRef;
@@ -46,7 +48,7 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
 
   const characterPosition = useMemo(() => new THREE.Vector3(...position), [position]);
   const nameTagOffset = useMemo(() => new THREE.Vector3(0, 1.5, 0), []);
-
+  const [messages, setMessages] = useState<{ text: string; timestamp: number }[]>([]);
   const updatePosition = useCallback((delta: number) => {
     if (!ref.current) return;
     const translation = ref.current.translation();
@@ -62,6 +64,20 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
   useFrame((_, delta) => {
     updatePosition(delta);
   });
+
+  useEffect(() => {
+    if (socket) {
+      const handleMessage = (event: MessageEvent) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'CHAT_MESSAGE' && data.id === playerId) {
+          setMessages(prev => [...prev, { text: data.message, timestamp: Date.now() }]);
+        }
+      };
+
+      socket.addEventListener('message', handleMessage);
+      return () => socket.removeEventListener('message', handleMessage);
+    }
+  }, [socket, playerId]);
 
   return (
     <>
@@ -81,7 +97,7 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
           <primitive object={shaderMaterial} attach="material" />
         </mesh>
       </RigidBody>
-      <NameTag ref={nameTagRef} name={playerName} />
+      <NameTag ref={nameTagRef} name={playerName} messages={messages} />
     </>
   );
 };

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useKeyboard } from '../../hooks/useKeyboard';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import './Chat.css';
 
 interface ChatMessage {
   id: string;
@@ -13,11 +13,13 @@ interface ChatSystemProps {
   socket: WebSocket | null;
 }
 
-const ChatSystem: React.FC<ChatSystemProps> = ({ playerId, playerName, socket }) => {
+const MAX_MESSAGES = 10;
+
+const Chat: React.FC<ChatSystemProps> = ({ playerId, playerName, socket }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isInputActive, setIsInputActive] = useState(false);
-  const keys = useKeyboard();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSendMessage = useCallback(() => {
     if (inputMessage.trim() && socket) {
@@ -27,24 +29,34 @@ const ChatSystem: React.FC<ChatSystemProps> = ({ playerId, playerName, socket })
         message: inputMessage
       }));
       setInputMessage('');
-      setIsInputActive(false);
     }
+    setIsInputActive(false);
   }, [inputMessage, socket, playerId]);
 
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (isInputActive) {
+      event.stopPropagation();
       if (event.key === 'Enter') {
-        if (isInputActive) {
-          handleSendMessage();
-        } else {
-          setIsInputActive(true);
-        }
+        handleSendMessage();
+      } else if (event.key === 'Escape') {
+        setIsInputActive(false);
+        setInputMessage('');
       }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+    } else if (event.key === 'Enter') {
+      setIsInputActive(true);
+    }
   }, [isInputActive, handleSendMessage]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [handleKeyDown]);
+
+  useEffect(() => {
+    if (isInputActive && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isInputActive]);
 
   useEffect(() => {
     if (socket) {
@@ -52,13 +64,13 @@ const ChatSystem: React.FC<ChatSystemProps> = ({ playerId, playerName, socket })
         const data = JSON.parse(event.data);
         if (data.type === 'CHAT_MESSAGE') {
           setMessages((prevMessages) => [
-            ...prevMessages,
             {
               id: data.id,
               playerName: data.playerName,
               message: data.message
-            }
-          ]);
+            },
+            ...prevMessages,
+          ].slice(0, MAX_MESSAGES));
         }
       };
 
@@ -67,36 +79,31 @@ const ChatSystem: React.FC<ChatSystemProps> = ({ playerId, playerName, socket })
     }
   }, [socket]);
 
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputMessage(e.target.value);
+  }, []);
+
   return (
-    <div style={{
-      position: 'absolute',
-      bottom: 20,
-      left: 20,
-      width: '300px',
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      color: 'white',
-      padding: '10px',
-      borderRadius: '5px'
-    }}>
-      <div style={{ height: '200px', overflowY: 'auto', marginBottom: '10px' }}>
+    <div className="chat-container">
+      <div className="chat-messages">
         {messages.map((msg, index) => (
-          <div key={index}>
+          <div key={index} className="chat-message">
             <strong>{msg.playerName}:</strong> {msg.message}
           </div>
         ))}
       </div>
       {isInputActive && (
         <input
+          ref={inputRef}
           type="text"
           value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-          style={{ width: '100%', padding: '5px' }}
-          autoFocus
+          onChange={handleInputChange}
+          className="chat-input"
+          onKeyDown={(e) => e.stopPropagation()}
         />
       )}
     </div>
   );
 };
 
-export default ChatSystem;
+export default Chat;

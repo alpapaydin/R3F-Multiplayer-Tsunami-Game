@@ -125,6 +125,7 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
           onCollisionEnter={handleCollisionEnter}
           onCollisionExit={handleCollisionExit}
           position={initialPos}
+          socket={socket}
         />
     );
 };

@@ -36,7 +36,7 @@ interface PlayerState {
   skin: string;
 }
 
-const OtherPlayers: React.FC<{ players: {[key: string]: PlayerState}, playerId: string | null }> = ({ players, playerId }) => {
+const OtherPlayers: React.FC<{ players: {[key: string]: PlayerState}, playerId: string | null, socket: WebSocket | null}> = ({ players, playerId, socket }) => {
   useFrame((_, delta) => {
     Object.entries(players).forEach(([id, player]) => {
       if (id !== playerId && player && player.position && player.targetPosition && player.velocity) {
@@ -58,6 +58,7 @@ const OtherPlayers: React.FC<{ players: {[key: string]: PlayerState}, playerId: 
             position={player.position.toArray()}
             score={player.score}
             skin={player.skin}
+            socket={socket}
           />
         )
       ))}
@@ -266,7 +267,7 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
           />
         )}
         
-        <OtherPlayers players={otherPlayers} playerId={playerId} />
+        <OtherPlayers socket={socket} players={otherPlayers} playerId={playerId} />
       </Physics>
     </Canvas>
     
