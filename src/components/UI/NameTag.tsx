@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { Text } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -11,15 +11,11 @@ interface NameTagProps {
 const NameTag: React.FC<NameTagProps> = ({ name, position }) => {
   const textRef = useRef<any>();
   const { camera } = useThree();
-
-  useEffect(() => {
-    if (textRef.current) {
-      textRef.current.position.set(position.x, position.y + 1.5, position.z);
-    }
-  }, [position]);
+  const offset = new THREE.Vector3(0, 1.5, 0);
 
   useFrame(() => {
     if (textRef.current) {
+      textRef.current.position.copy(position).add(offset);
       textRef.current.quaternion.copy(camera.quaternion);
     }
   });

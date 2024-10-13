@@ -22,6 +22,7 @@ interface PlayerCharacterProps {
   skin: string;
   onCollisionEnter?: (event: CollisionEnterPayload) => void;
   onCollisionExit?: (event: CollisionExitPayload) => void;
+  initialPos?: [number,number,number];
 }
 
 const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
@@ -33,14 +34,15 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
   score,
   skin,
   onCollisionEnter,
-  onCollisionExit
+  onCollisionExit,
+  initialPos = [0,25,0]
 }) => {
     const rigidBodyRef = useRef<RapierRigidBody>(null);
     const keys = useKeyboard();
     const { rotation, updateCamera } = useCameraControls();
     const targetVelocity = useMemo(() => new THREE.Vector3(), []);
     const jumpDirection = useMemo(() => vec3({ x: 0, y: JUMP_FORCE, z: 0 }), []);
-    const characterPosition = useMemo(() => new THREE.Vector3(), []);
+    const characterPosition = useMemo(() => new THREE.Vector3(...initialPos), []);
     const characterVelocity = useMemo(() => new THREE.Vector3(), []);
     const { rapier, world } = useRapier();
     const [isGrounded, setIsGrounded] = useState(false);
@@ -122,7 +124,7 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
           rigidBodyRef={rigidBodyRef}
           playerId={playerId}
           playerName={playerName}
-          position={[0, 20, 0]}
+          position={characterPosition.toArray()}
           onCollisionEnter={handleCollisionEnter}
           onCollisionExit={handleCollisionExit}
         />

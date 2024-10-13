@@ -1,9 +1,9 @@
-import React, { useRef, useMemo, useState } from 'react';
+import React, { useRef, useMemo, useState, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RigidBody, RapierRigidBody, CollisionEnterPayload, CollisionExitPayload, interactionGroups } from '@react-three/rapier';
 import NameTag from '../UI/NameTag';
-import { skins } from './skins'; // Import skins from skins.ts
+import { skins } from './skins';
 
 interface BaseCharacterProps {
   playerId: string | null;
@@ -23,7 +23,7 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
   position = [0, 25, 0],
   rigidBodyRef,
   characterRadius,
-  skin, // The skin prop that determines which shader/uniforms to apply
+  skin,
   onCollisionEnter,
   onCollisionExit
 }) => {
@@ -31,10 +31,8 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
   const ref = rigidBodyRef || internalRigidBodyRef;
   const meshRef = useRef<THREE.Mesh>(null);
 
-  // Use the skin prop to dynamically select shader and uniforms
   const { shader, uniforms } = useMemo(() => skins[skin] || skins.default, [skin]);
 
-  // Memoized shader material
   const shaderMaterial = useMemo(
     () =>
       new THREE.ShaderMaterial({
@@ -46,16 +44,17 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
     [shader, uniforms]
   );
 
-  const [characterPosition, setCharacterPosition] = useState(new THREE.Vector3(...position));
+  const characterPosition = useMemo(() => new THREE.Vector3(...position), [position]);
 
-  useFrame((_, delta) => {
+  const updatePosition = useCallback((delta: number) => {
     if (!ref.current) return;
     const translation = ref.current.translation();
-    const newPosition = new THREE.Vector3(translation.x, translation.y, translation.z);
-    setCharacterPosition(newPosition);
-
-    // Update shader's time uniform
+    characterPosition.set(translation.x, translation.y, translation.z);
     shaderMaterial.uniforms.time.value += delta;
+  }, [ref, characterPosition, shaderMaterial.uniforms]);
+
+  useFrame((_, delta) => {
+    updatePosition(delta);
   });
 
   return (
