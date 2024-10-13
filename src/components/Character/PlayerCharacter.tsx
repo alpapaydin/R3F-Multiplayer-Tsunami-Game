@@ -1,4 +1,4 @@
-import React, { useRef, useMemo, useState } from 'react';
+import React, { useRef, useMemo, useState, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { vec3, useRapier, CollisionEnterPayload, CollisionExitPayload, interactionGroups } from '@react-three/rapier';
@@ -9,6 +9,8 @@ import BaseCharacter from './BaseCharacter';
 
 const JUMP_FORCE = 100;
 const MAX_VELOCITY = 70;
+const FIXED_TIMESTEP = 1 / 60; // 60 Hz physics update
+const MAX_DELTA_TIME = 0.1; // Maximum allowed delta time
 
 interface PlayerCharacterProps {
   onPositionUpdate: (position: THREE.Vector3, velocity: THREE.Vector3) => void;
@@ -41,11 +43,11 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
     const characterPosition = useMemo(() => new THREE.Vector3(), []);
     const characterVelocity = useMemo(() => new THREE.Vector3(), []);
     const { rapier, world } = useRapier();
-
-    // State to track if the character is grounded
     const [isGrounded, setIsGrounded] = useState(false);
+    const lastUpdateTime = useRef(0);
+    const accumulatedTime = useRef(0);
 
-    useFrame((_, delta) => {
+    const updatePhysics = useCallback((deltaTime: number) => {
         if (!rigidBodyRef.current) return;
         const rigidBody = rigidBodyRef.current;
 
@@ -61,9 +63,9 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
         // Smoothly interpolate current velocity to target velocity
         const currentVelocity = rigidBody.linvel();
         const newVelocity = new THREE.Vector3(
-            THREE.MathUtils.lerp(currentVelocity.x, targetVelocity.x, delta * 5),
+            THREE.MathUtils.lerp(currentVelocity.x, targetVelocity.x, deltaTime * 5),
             currentVelocity.y,
-            THREE.MathUtils.lerp(currentVelocity.z, targetVelocity.z, delta * 5)
+            THREE.MathUtils.lerp(currentVelocity.z, targetVelocity.z, deltaTime * 5)
         );
         rigidBody.setLinvel(vec3(newVelocity), true);
 
@@ -71,11 +73,12 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
         const position = rigidBody.translation();
         const jumpRay = new rapier.Ray({ x: position.x, y: position.y, z: position.z }, { x: 0, y: -1, z: 0 });
         const hit = world.castRay(jumpRay, characterRadius + 1.1, true, undefined, interactionGroups(1));
-        setIsGrounded(!!hit); // Set isGrounded based on raycast hit
+        setIsGrounded(!!hit);
+
         // Jumping logic
         if (keys.space && isGrounded) {
             rigidBody.applyImpulse(jumpDirection, true);
-            setIsGrounded(false); // Reset grounded status after jumping
+            setIsGrounded(false);
         }
 
         // Update position and camera
@@ -86,18 +89,28 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
         
         // Call onPositionUpdate with both position and velocity
         onPositionUpdate(characterPosition, characterVelocity);
+    }, [keys, rotation.y, targetVelocity, jumpDirection, characterPosition, characterVelocity, isGrounded, onPositionUpdate, updateCamera, rapier, world, characterRadius]);
+
+    useFrame((state) => {
+        const currentTime = state.clock.getElapsedTime();
+        let deltaTime = currentTime - lastUpdateTime.current;
+        deltaTime = Math.min(deltaTime, MAX_DELTA_TIME); // Limit maximum delta time
+        
+        accumulatedTime.current += deltaTime;
+        
+        while (accumulatedTime.current >= FIXED_TIMESTEP) {
+            updatePhysics(FIXED_TIMESTEP);
+            accumulatedTime.current -= FIXED_TIMESTEP;
+        }
+        
+        lastUpdateTime.current = currentTime;
     });
 
     const handleCollisionEnter = (event: CollisionEnterPayload) => {
-        //console.log("Collision Enter:", event);
-        if (event.other.rigidBodyObject) {
-            //console.log(`${event.target.rigidBodyObject} collided with ${event.other.rigidBodyObject}`);
-        }
         onCollisionEnter?.(event);
     };
 
     const handleCollisionExit = (event: CollisionExitPayload) => {
-        //console.log("Collision Exit:", event);
         onCollisionExit?.(event);
     };
 
