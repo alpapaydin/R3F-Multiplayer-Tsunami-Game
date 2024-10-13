@@ -28,7 +28,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "concurrently \"npm run server\" \"react-scripts start\"",
+    "start": "concurrently \"npm run server\" \"HTTPS=true SSL_CRT_FILE=.cert/fullchain4.pem SSL_KEY_FILE=.cert/privkey4.pem react-scripts start\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
@@ -51,5 +51,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "https-localhost": "^4.7.1"
   }
 }

@@ -1,9 +1,21 @@
 const express = require('express');
-const http = require('http');
+const https = require('https');
 const WebSocket = require('ws');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
-const server = http.createServer(app);
+
+// Read SSL certificate files
+const privateKey = fs.readFileSync(path.join(__dirname, '../.cert', 'privkey4.pem'), 'utf8');
+const certificate = fs.readFileSync(path.join(__dirname, '../.cert', 'fullchain4.pem'), 'utf8');
+
+const credentials = { key: privateKey, cert: certificate };
+
+// Create HTTPS server
+const server = https.createServer(credentials, app);
+
+// Create secure WebSocket server
 const wss = new WebSocket.Server({ server });
 
 // Server state
@@ -87,11 +99,11 @@ wss.on('connection', (ws) => {
                 }
                 break;
 
-                case 'PING':
-                    ws.send(JSON.stringify({
-                        type: 'PONG'
-                    }));
-                    break;
+            case 'PING':
+                ws.send(JSON.stringify({
+                    type: 'PONG'
+                }));
+                break;
 
             default:
                 break;
@@ -104,6 +116,8 @@ wss.on('connection', (ws) => {
     });
 });
 
-server.listen(8080, () => {
-    console.log('WebSocket server running on port 8080');
+// Start the server
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+    console.log(`Secure WebSocket server running on port ${PORT}`);
 });

@@ -1,4 +1,4 @@
-export const WS_URL = 'ws://opentun.nl:8080'
+export const WS_URL = 'wss://opentun.nl:8080'
 export const CHUNK_SIZE = 64
 export const CHUNK_RES = 64
 export const HEIGHT_SCALE = 10
