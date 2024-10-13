@@ -7,10 +7,10 @@ import { useCameraControls } from '../CameraControls';
 import { RapierRigidBody } from '@react-three/rapier';
 import BaseCharacter from './BaseCharacter';
 
-const JUMP_FORCE = 100;
+const MOVE_FORCE = 500;
+const JUMP_FORCE = 250;
 const MAX_VELOCITY = 70;
-const FIXED_TIMESTEP = 1 / 60; // 60 Hz physics update
-const MAX_DELTA_TIME = 0.1; // Maximum allowed delta time
+const DAMPING = 0.95;
 
 interface PlayerCharacterProps {
   onPositionUpdate: (position: THREE.Vector3, velocity: THREE.Vector3) => void;
@@ -40,81 +40,79 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
     const rigidBodyRef = useRef<RapierRigidBody>(null);
     const keys = useKeyboard();
     const { rotation, updateCamera } = useCameraControls();
-    const targetVelocity = useMemo(() => new THREE.Vector3(), []);
+    const moveDirection = useMemo(() => new THREE.Vector3(), []);
     const jumpDirection = useMemo(() => vec3({ x: 0, y: JUMP_FORCE, z: 0 }), []);
-    const characterPosition = useMemo(() => new THREE.Vector3(...initialPos), []);
-    const characterVelocity = useMemo(() => new THREE.Vector3(), []);
     const { rapier, world } = useRapier();
     const [isGrounded, setIsGrounded] = useState(false);
-    const lastUpdateTime = useRef(0);
-    const accumulatedTime = useRef(0);
 
-    const updatePhysics = useCallback((deltaTime: number) => {
+    const updatePhysics = useCallback((delta: number) => {
         if (!rigidBodyRef.current) return;
         const rigidBody = rigidBodyRef.current;
 
-        // Calculate target velocity based on keyboard input
-        targetVelocity.set(0, 0, 0);
-        if (keys.w) targetVelocity.z -= 1;
-        if (keys.s) targetVelocity.z += 1;
-        if (keys.a) targetVelocity.x -= 1;
-        if (keys.d) targetVelocity.x += 1;
-        targetVelocity.normalize().multiplyScalar(MAX_VELOCITY);
-        targetVelocity.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation.y);
+        // Calculate move direction based on keyboard input
+        moveDirection.set(0, 0, 0);
+        if (keys.w) moveDirection.z -= 1;
+        if (keys.s) moveDirection.z += 1;
+        if (keys.a) moveDirection.x -= 1;
+        if (keys.d) moveDirection.x += 1;
+        moveDirection.normalize().multiplyScalar(MOVE_FORCE * delta);
+        moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation.y);
 
-        // Smoothly interpolate current velocity to target velocity
-        const currentVelocity = rigidBody.linvel();
-        const newVelocity = new THREE.Vector3(
-            THREE.MathUtils.lerp(currentVelocity.x, targetVelocity.x, deltaTime * 5),
-            currentVelocity.y,
-            THREE.MathUtils.lerp(currentVelocity.z, targetVelocity.z, deltaTime * 5)
+        // Apply move force
+        rigidBody.applyImpulse(vec3(moveDirection), true);
+
+        // Apply damping
+        const currentVel = rigidBody.linvel();
+        rigidBody.setLinvel(
+            { x: currentVel.x * DAMPING, y: currentVel.y, z: currentVel.z * DAMPING },
+            true
         );
-        rigidBody.setLinvel(vec3(newVelocity), true);
+
+        // Limit max velocity
+        const speed = new THREE.Vector3(currentVel.x, 0, currentVel.z).length();
+        if (speed > MAX_VELOCITY) {
+            const limitedVel = new THREE.Vector3(currentVel.x, 0, currentVel.z)
+                .normalize()
+                .multiplyScalar(MAX_VELOCITY);
+            rigidBody.setLinvel(
+                { x: limitedVel.x, y: currentVel.y, z: limitedVel.z },
+                true
+            );
+        }
 
         // Grounded check using raycasting
         const position = rigidBody.translation();
-        const jumpRay = new rapier.Ray({ x: position.x, y: position.y, z: position.z }, { x: 0, y: -1, z: 0 });
-        const hit = world.castRay(jumpRay, characterRadius + 1.1, true, undefined, interactionGroups(1));
+        const jumpRay = new rapier.Ray(position, { x: 0, y: -1, z: 0 });
+        const hit = world.castRay(jumpRay, characterRadius + 0.1, true, undefined, interactionGroups(1));
         setIsGrounded(!!hit);
 
         // Jumping logic
         if (keys.space && isGrounded) {
             rigidBody.applyImpulse(jumpDirection, true);
-            setIsGrounded(false);
         }
 
         // Update position and camera
         const translation = rigidBody.translation();
-        characterPosition.set(translation.x, translation.y, translation.z);
-        characterVelocity.set(newVelocity.x, newVelocity.y, newVelocity.z);
-        updateCamera(characterPosition);
+        updateCamera(new THREE.Vector3(translation.x, translation.y, translation.z));
         
         // Call onPositionUpdate with both position and velocity
-        onPositionUpdate(characterPosition, characterVelocity);
-    }, [keys, rotation.y, targetVelocity, jumpDirection, characterPosition, characterVelocity, isGrounded, onPositionUpdate, updateCamera, rapier, world, characterRadius]);
+        onPositionUpdate(
+            new THREE.Vector3(translation.x, translation.y, translation.z),
+            new THREE.Vector3(currentVel.x, currentVel.y, currentVel.z)
+        );
+    }, [keys, rotation.y, moveDirection, jumpDirection, isGrounded, onPositionUpdate, updateCamera, rapier, world, characterRadius]);
 
-    useFrame((state) => {
-        const currentTime = state.clock.getElapsedTime();
-        let deltaTime = currentTime - lastUpdateTime.current;
-        deltaTime = Math.min(deltaTime, MAX_DELTA_TIME); // Limit maximum delta time
-        
-        accumulatedTime.current += deltaTime;
-        
-        while (accumulatedTime.current >= FIXED_TIMESTEP) {
-            updatePhysics(FIXED_TIMESTEP);
-            accumulatedTime.current -= FIXED_TIMESTEP;
-        }
-        
-        lastUpdateTime.current = currentTime;
+    useFrame((_, delta) => {
+        updatePhysics(delta);
     });
 
-    const handleCollisionEnter = (event: CollisionEnterPayload) => {
+    const handleCollisionEnter = useCallback((event: CollisionEnterPayload) => {
         onCollisionEnter?.(event);
-    };
+    }, [onCollisionEnter]);
 
-    const handleCollisionExit = (event: CollisionExitPayload) => {
+    const handleCollisionExit = useCallback((event: CollisionExitPayload) => {
         onCollisionExit?.(event);
-    };
+    }, [onCollisionExit]);
 
     return (
         <BaseCharacter
@@ -126,6 +124,7 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
           playerName={playerName}
           onCollisionEnter={handleCollisionEnter}
           onCollisionExit={handleCollisionExit}
+          position={initialPos}
         />
     );
 };
