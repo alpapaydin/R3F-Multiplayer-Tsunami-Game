@@ -35,7 +35,7 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
   skin,
   onCollisionEnter,
   onCollisionExit,
-  initialPos = [0,25,0]
+  initialPos = [0,25,0],
 }) => {
     const rigidBodyRef = useRef<RapierRigidBody>(null);
     const keys = useKeyboard();

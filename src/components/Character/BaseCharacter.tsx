@@ -1,5 +1,5 @@
-import React, { useRef, useMemo, useState, useCallback } from 'react';
-import { useFrame } from '@react-three/fiber';
+import React, { useRef, useMemo, useCallback } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RigidBody, RapierRigidBody, CollisionEnterPayload, CollisionExitPayload, interactionGroups } from '@react-three/rapier';
 import NameTag from '../UI/NameTag';
@@ -30,6 +30,8 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
   const internalRigidBodyRef = useRef<RapierRigidBody>(null);
   const ref = rigidBodyRef || internalRigidBodyRef;
   const meshRef = useRef<THREE.Mesh>(null);
+  const nameTagRef = useRef<any>();
+  const { camera } = useThree();
   const { shader, uniforms } = useMemo(() => skins[skin] || skins.default, [skin]);
   const shaderMaterial = useMemo(
     () =>
@@ -43,13 +45,19 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
   );
 
   const characterPosition = useMemo(() => new THREE.Vector3(...position), [position]);
+  const nameTagOffset = useMemo(() => new THREE.Vector3(0, 1.5, 0), []);
 
   const updatePosition = useCallback((delta: number) => {
     if (!ref.current) return;
     const translation = ref.current.translation();
     characterPosition.set(translation.x, translation.y, translation.z);
     shaderMaterial.uniforms.time.value += delta;
-  }, [ref, characterPosition, shaderMaterial.uniforms]);
+
+    if (nameTagRef.current) {
+      nameTagRef.current.position.copy(translation).add(nameTagOffset);
+      nameTagRef.current.quaternion.copy(camera.quaternion);
+    }
+  }, [ref, characterPosition, shaderMaterial.uniforms, nameTagOffset, camera]);
 
   useFrame((_, delta) => {
     updatePosition(delta);
@@ -73,7 +81,7 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
           <primitive object={shaderMaterial} attach="material" />
         </mesh>
       </RigidBody>
-      <NameTag name={playerName} position={characterPosition} />
+      <NameTag ref={nameTagRef} name={playerName} />
     </>
   );
 };

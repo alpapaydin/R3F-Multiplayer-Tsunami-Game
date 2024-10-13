@@ -1,28 +1,15 @@
-import React, { useRef } from 'react';
+import React, { forwardRef } from 'react';
 import { Text } from '@react-three/drei';
-import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
 interface NameTagProps {
   name: string | null;
-  position: THREE.Vector3;
 }
 
-const NameTag: React.FC<NameTagProps> = ({ name, position }) => {
-  const textRef = useRef<any>();
-  const { camera } = useThree();
-  const offset = new THREE.Vector3(0, 1.5, 0);
-
-  useFrame(() => {
-    if (textRef.current) {
-      textRef.current.position.copy(position).add(offset);
-      textRef.current.quaternion.copy(camera.quaternion);
-    }
-  });
-
+const NameTag = forwardRef<any, NameTagProps>(({ name }, ref) => {
   return (
     <Text
-      ref={textRef}
+      ref={ref}
       fontSize={0.9}
       color="white"
       anchorX="center"
@@ -33,6 +20,6 @@ const NameTag: React.FC<NameTagProps> = ({ name, position }) => {
       {name}
     </Text>
   );
-};
+});
 
 export default NameTag;
