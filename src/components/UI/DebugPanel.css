@@ -2,16 +2,16 @@
     position: fixed;
     top: 16px;
     left: 16px;
-    background-color: rgba(255, 0, 0, 0.8); /* Bright red background */
+    background-color: rgba(255, 0, 0, 0.459); /* Bright red background */
     color: white;
     padding: 16px;
     border-radius: 8px;
     font-family: Arial, sans-serif;
-    font-size: 18px; /* Increased font size */
+    font-size: 10px; /* Increased font size */
     line-height: 1.4;
     z-index: 9999; /* Ensure it's on top of other elements */
     box-shadow: 0 0 20px rgba(255, 255, 255, 0.5); /* White glow */
-    min-width: 200px;
+    min-width: 255px;
     min-height: 100px;
   }
   

@@ -1,8 +1,10 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import * as THREE from 'three';
+import { useThree } from '@react-three/fiber';
 import { Biome } from '../systems/biomes';
 import { PropSpawner, PropInstance } from '../systems/PropSpawner';
 import Prop from './Props/Prop';
+import Food from './Props/Food';
 
 interface ChunkProps {
   position: [number, number, number];
@@ -11,10 +13,13 @@ interface ChunkProps {
   heightScale: number;
   noiseScale: number;
   heightNoise: (x: number, y: number) => number;
+  foodNoise: (x: number, y: number) => number;
   getBiomeAt: (x: number, z: number) => Biome;
   propSpawner: PropSpawner;
   chunkKey: string;
   material: THREE.Material;
+  onFoodCollected: (chunkKey: string, foodIndex: number) => void;
+  collectedFood: Set<string>;
 }
 
 const Chunk: React.FC<ChunkProps> = ({
@@ -24,16 +29,20 @@ const Chunk: React.FC<ChunkProps> = ({
   heightScale,
   noiseScale,
   heightNoise,
+  foodNoise,
   getBiomeAt,
   propSpawner,
   chunkKey,
   material,
+  onFoodCollected,
+  collectedFood,
 }) => {
   const [chunkX, _, chunkZ] = position;
   const [props, setProps] = useState<PropInstance[]>([]);
+  const [foodItems, setFoodItems] = useState<{ position: [number, number, number] }[]>([]);
+  const { scene } = useThree();
 
   const geometry = useMemo(() => {
-    //console.log(`Generating geometry for chunk ${chunkKey}`);
     const geo = new THREE.BufferGeometry();
     const vertices: number[] = [];
     const colors: number[] = [];
@@ -46,14 +55,11 @@ const Chunk: React.FC<ChunkProps> = ({
         const worldX = position[0] + x;
         const worldZ = position[2] + z;
 
-        // Generate additional noise for height variation
         const biome = getBiomeAt(worldX, worldZ);
         const randomNoise = heightNoise(worldX * noiseScale * 0.5, worldZ * noiseScale * 0.5);
-        // Add some randomness to the height, scaled by the biome roughness
-        const variation = (randomNoise * biome.roughness) * 0.8; // Adjust 0.2 to control randomness intensity
+        const variation = (randomNoise * biome.roughness) * 0.8;
         const heightValue = (heightNoise(worldX * noiseScale, worldZ * noiseScale) + 1) * biome.roughness;
         const height = (heightValue + variation) * heightScale * biome.heightMultiplier;
-
 
         vertices.push(x, height, z);
         colors.push(biome.color.r, biome.color.g, biome.color.b);
@@ -74,11 +80,10 @@ const Chunk: React.FC<ChunkProps> = ({
     geo.computeVertexNormals();
 
     return geo;
-  }, [position, size, resolution, heightScale, noiseScale, heightNoise, getBiomeAt, chunkKey]);
+  }, [position, size, resolution, heightScale, noiseScale, heightNoise, getBiomeAt]);
 
   useEffect(() => {
     const generateProps = async () => {
-      //console.log(`Generating props for chunk ${chunkKey}`);
       const chunkProps = await propSpawner.generatePropsForChunk(
         chunkX / size,
         chunkZ / size,
@@ -86,12 +91,42 @@ const Chunk: React.FC<ChunkProps> = ({
         getBiomeAt(chunkX, chunkZ),
         (x, z) => heightNoise(x * noiseScale, z * noiseScale) * heightScale
       );
-      //console.log(`Generated ${chunkProps.length} props for chunk ${chunkKey}`);
       setProps(chunkProps);
+
+      // Generate food items
+      const newFoodItems: { id: string; position: [number, number, number] }[] = [];
+      const foodDensity = 5; // Adjust this value to control the number of food items
+      for (let i = 0; i < foodDensity; i++) {
+        const x = Math.random() * size;
+        const z = Math.random() * size;
+        const worldX = position[0] + x;
+        const worldZ = position[2] + z;
+        const foodValue = foodNoise(worldX * noiseScale, worldZ * noiseScale);
+        const foodId = `${chunkKey}-food-${i}`;
+        
+        if (foodValue > 0.6 && !collectedFood.has(foodId)) {
+          const height = heightNoise(worldX * noiseScale, worldZ * noiseScale) * heightScale;
+          newFoodItems.push({ 
+            id: foodId, 
+            position: [x, height + 0.5, z] 
+          });
+        }
+      }
+      setFoodItems(newFoodItems);
     };
 
     generateProps();
-  }, [chunkX, chunkZ, size, getBiomeAt, heightNoise, noiseScale, heightScale, propSpawner, chunkKey]);
+
+    // Cleanup function to remove food items when chunk is unmounted
+    return () => {
+      foodItems.forEach((_, index) => {
+        const foodObject = scene.getObjectByName(`${chunkKey}-food-${index}`);
+        if (foodObject) {
+          scene.remove(foodObject);
+        }
+      });
+    };
+  }, [chunkX, chunkZ, size, getBiomeAt, heightNoise, foodNoise, noiseScale, heightScale, propSpawner, chunkKey, position, collectedFood, scene]);
 
   const groupedProps = useMemo(() => {
     return props.reduce((acc, prop) => {
@@ -103,16 +138,19 @@ const Chunk: React.FC<ChunkProps> = ({
     }, {} as Record<string, PropInstance[]>);
   }, [props]);
 
-  useEffect(() => {
-    //console.log(`Chunk ${chunkKey} rendered with ${props.length} props`);
-    //console.log('Grouped props:', groupedProps);
-  }, [chunkKey, props, groupedProps]);
-
   return (
     <>
       <mesh geometry={geometry} material={material} position={position} />
       {Object.entries(groupedProps).map(([type, instances]) => (
         <Prop key={`${chunkKey}-${type}`} type={type} instances={instances} />
+      ))}
+      {foodItems.map((item, index) => (
+        <Food 
+          key={`${chunkKey}-food-${index}`}
+          position={item.position}
+          onCollect={() => onFoodCollected(chunkKey, index)}
+          name={`${chunkKey}-food-${index}`}
+        />
       ))}
     </>
   );

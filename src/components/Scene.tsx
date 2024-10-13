@@ -72,7 +72,7 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
   const [otherPlayers, setOtherPlayers] = useState<{[key: string]: PlayerState}>({});
   const [wsClient, setWsClient] = useState<WSClient | null>(null);
   const [latency, setLatency] = useState(0);
-
+  const [collectedFood, setCollectedFood] = useState<Set<string>>(new Set());
   const lastUpdatePosition = useRef(new THREE.Vector3(0, 50, 0));
   const lastUpdateTime = useRef(0);
 
@@ -90,6 +90,21 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
       lastUpdatePosition.current.copy(newPosition);
       lastUpdateTime.current = currentTime;
     }
+  }, [wsClient]);
+
+  const handleFoodCollected = useCallback((chunkKey: string, foodIndex: number) => {
+    setCollectedFood((prevCollected) => {
+      const newCollected = new Set(prevCollected);
+      newCollected.add(`${chunkKey}-${foodIndex}`);
+      return newCollected;
+    });
+
+    // Update player score
+    if (wsClient) {
+      wsClient.updateScore(1); // Assuming each food item is worth 1 point
+    }
+
+    // You might want to add sound effects or visual feedback here
   }, [wsClient]);
 
   useEffect(() => {
@@ -252,6 +267,8 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
             playerPosition={playerPosition}
             renderDistance={RENDER_DISTANCE}
             mapSeed={mapSeed}
+            collectedFood={collectedFood}
+            onFoodCollected={handleFoodCollected}
           />
         )}
 

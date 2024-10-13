@@ -17,6 +17,8 @@ interface TerrainProps {
   playerPosition: THREE.Vector3;
   renderDistance: number;
   mapSeed: number;
+  onFoodCollected: (chunkKey: string, foodIndex: number) => void;
+  collectedFood: Set<string>;
 }
 
 interface ChunkData {
@@ -32,12 +34,15 @@ const Terrain: React.FC<TerrainProps> = ({
   playerPosition,
   renderDistance,
   mapSeed,
+  onFoodCollected,
+  collectedFood,
 }) => {
   const [loadedChunks, setLoadedChunks] = useState<ChunkData[]>([]);
   const prng = useMemo(() => alea(mapSeed), [mapSeed]);
   const heightNoise = useRef(createNoise2D(prng));
   const temperatureNoise = useRef(createNoise2D(prng));
   const humidityNoise = useRef(createNoise2D(prng));
+  const foodNoise = useRef(createNoise2D(prng));
   const previousPlayerChunk = useRef<{ x: number; z: number } | null>(null);
   const propSpawner = useMemo(() => new PropSpawner(mapSeed), [mapSeed]);
 
@@ -156,10 +161,13 @@ const Terrain: React.FC<TerrainProps> = ({
             heightScale={heightScale}
             noiseScale={noiseScale}
             heightNoise={heightNoise.current}
+            foodNoise={foodNoise.current}
             getBiomeAt={getBiomeAt}
             propSpawner={propSpawner}
             chunkKey={chunk.key}
             material={material}
+            onFoodCollected={onFoodCollected}
+            collectedFood={collectedFood}
           />
         </RigidBody>
       ))}
