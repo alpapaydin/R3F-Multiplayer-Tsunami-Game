@@ -30,9 +30,7 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
   const internalRigidBodyRef = useRef<RapierRigidBody>(null);
   const ref = rigidBodyRef || internalRigidBodyRef;
   const meshRef = useRef<THREE.Mesh>(null);
-
   const { shader, uniforms } = useMemo(() => skins[skin] || skins.default, [skin]);
-
   const shaderMaterial = useMemo(
     () =>
       new THREE.ShaderMaterial({

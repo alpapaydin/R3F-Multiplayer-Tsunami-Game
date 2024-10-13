@@ -124,7 +124,6 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
           rigidBodyRef={rigidBodyRef}
           playerId={playerId}
           playerName={playerName}
-          position={characterPosition.toArray()}
           onCollisionEnter={handleCollisionEnter}
           onCollisionExit={handleCollisionExit}
         />
