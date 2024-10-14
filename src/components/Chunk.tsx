@@ -19,7 +19,7 @@ interface ChunkProps {
   propSpawner: PropSpawner;
   chunkKey: string;
   material: THREE.Material;
-  onFoodCollected: (chunkKey: string, foodIndex: number) => void;
+  onFoodCollected: (chunkKey: string, foodIndex: number, foodValue: number) => void;
   collectedFood: Set<string>;
   mapSeed: number;
 }
@@ -45,7 +45,6 @@ const Chunk: React.FC<ChunkProps> = ({
   const [props, setProps] = useState<PropInstance[]>([]);
   const { scene } = useThree();
   const [foodItems, setFoodItems] = useState<{ id: string; position: [number, number, number] }[]>([]);
-
   const generateFoodItems = useMemo(() => {
     const chunkNoise = foodNoise;
     const newFoodItems: { id: string; position: [number, number, number] }[] = [];
@@ -61,7 +60,7 @@ const Chunk: React.FC<ChunkProps> = ({
       const worldZ = chunkZ + localZ;
       
       const foodValue = foodNoise(worldX * noiseScale, worldZ * noiseScale);
-      const foodId = `${chunkKey}-food-${i}`;
+      const foodId = `${chunkKey}/food/${i}`;
       
       if (foodValue > 0.6 && !collectedFood.has(foodId)) {
         const height = heightNoise(worldX * noiseScale, worldZ * noiseScale) * heightScale;
@@ -77,6 +76,8 @@ const Chunk: React.FC<ChunkProps> = ({
   useEffect(() => {
     setFoodItems(generateFoodItems);
   }, [generateFoodItems]);
+
+  
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -135,7 +136,7 @@ const Chunk: React.FC<ChunkProps> = ({
     // Cleanup function to remove food items when chunk is unmounted
     return () => {
       foodItems.forEach((_, index) => {
-        const foodObject = scene.getObjectByName(`${chunkKey}-food-${index}`);
+        const foodObject = scene.getObjectByName(`${chunkKey}/food/${index}`);
         if (foodObject) {
           scene.remove(foodObject);
         }
@@ -162,14 +163,14 @@ const Chunk: React.FC<ChunkProps> = ({
       {foodItems.map((item, index) => (
         <Food 
           foodValue={foodValue}
-          key={`${chunkKey}-food-${index}`}
+          key={`${chunkKey}/food/${index}`}
           position={[
             position[0] + item.position[0],
             item.position[1],
             position[2] + item.position[2]
           ]}
-          onCollect={() => onFoodCollected(chunkKey, index)}
-          name={`food/${foodValue}/${chunkKey}/${index}`}
+          onCollect={() => onFoodCollected(chunkKey, index, foodValue)}
+          name={`${chunkKey}/food/${index}`}
         />
       ))}
     </>

@@ -17,7 +17,7 @@ interface TerrainProps {
   playerPosition: THREE.Vector3;
   renderDistance: number;
   mapSeed: number;
-  onFoodCollected: (chunkKey: string, foodIndex: number) => void;
+  onFoodCollected: (chunkKey: string, foodIndex: number, foodValue: number) => void;
   collectedFood: Set<string>;
 }
 

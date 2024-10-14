@@ -92,20 +92,32 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
     }
   }, [wsClient]);
 
-  const handleFoodCollected = useCallback((chunkKey: string, foodIndex: number) => {
-    setCollectedFood((prevCollected) => {
-      const newCollected = new Set(prevCollected);
-      newCollected.add(`${chunkKey}-${foodIndex}`);
-      return newCollected;
-    });
+  const handleFoodCollected = useCallback((chunkKey: string, foodIndex: number, foodValue: number) => {
+
 
     // Update player score
-    if (wsClient) {
-      wsClient.updateScore(1); // Assuming each food item is worth 1 point
+    if (playerId) {
+      setOtherPlayers((prevPlayers) => {
+        const currentPlayer = prevPlayers[playerId];
+        if (currentPlayer) {
+          const newScore = currentPlayer.score + foodValue;
+          if (wsClient) {
+            wsClient.updateScore(newScore);
+          }
+          return {
+            ...prevPlayers,
+            [playerId]: {
+              ...currentPlayer,
+              score: newScore,
+            },
+          };
+        }
+        return prevPlayers;
+      });
     }
 
     // You might want to add sound effects or visual feedback here
-  }, [wsClient]);
+  }, [wsClient, playerId]);
 
   useEffect(() => {
     if (initialGameState) {
