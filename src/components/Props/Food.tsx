@@ -20,8 +20,7 @@ const Food: React.FC<FoodProps> = ({ position, onCollect, name, foodValue=1 }) =
       name={name}
       onCollisionEnter={(payload) => {
         if (payload.other.rigidBodyObject?.name === 'player') {
-          onCollect();
-          scene.remove(payload.target.rigidBodyObject!);
+          //onCollect();
         }
       }}
     >

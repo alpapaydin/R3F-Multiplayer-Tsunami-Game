@@ -82,6 +82,7 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
   return (
     <>
       <RigidBody
+        name="player"
         collisionGroups={interactionGroups(1, 2)}
         ref={ref}
         colliders="ball"
