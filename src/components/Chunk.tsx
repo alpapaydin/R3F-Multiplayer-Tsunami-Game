@@ -5,6 +5,7 @@ import { Biome } from '../systems/biomes';
 import { PropSpawner, PropInstance } from '../systems/PropSpawner';
 import Prop from './Props/Prop';
 import Food from './Props/Food';
+import {FOOD_DENSITY} from '../constants';
 
 interface ChunkProps {
   position: [number, number, number];
@@ -20,6 +21,7 @@ interface ChunkProps {
   material: THREE.Material;
   onFoodCollected: (chunkKey: string, foodIndex: number) => void;
   collectedFood: Set<string>;
+  mapSeed: number;
 }
 
 const Chunk: React.FC<ChunkProps> = ({
@@ -36,11 +38,45 @@ const Chunk: React.FC<ChunkProps> = ({
   material,
   onFoodCollected,
   collectedFood,
+  mapSeed,
 }) => {
+  const foodValue = Math.random() * (5 - 0.1) + 0.1;
   const [chunkX, _, chunkZ] = position;
   const [props, setProps] = useState<PropInstance[]>([]);
-  const [foodItems, setFoodItems] = useState<{ position: [number, number, number] }[]>([]);
   const { scene } = useThree();
+  const [foodItems, setFoodItems] = useState<{ id: string; position: [number, number, number] }[]>([]);
+
+  const generateFoodItems = useMemo(() => {
+    const chunkNoise = foodNoise;
+    const newFoodItems: { id: string; position: [number, number, number] }[] = [];
+    const foodDensity = FOOD_DENSITY; // Adjust this value to control the number of food items
+
+    for (let i = 0; i < foodDensity; i++) {
+      // Generate local coordinates within the chunk
+      const localX = (chunkNoise(i * 0.1, 0) * 0.5 + 0.5) * size;
+      const localZ = (chunkNoise(0, i * 0.1) * 0.5 + 0.5) * size;
+      
+      // Calculate world coordinates
+      const worldX = chunkX + localX;
+      const worldZ = chunkZ + localZ;
+      
+      const foodValue = foodNoise(worldX * noiseScale, worldZ * noiseScale);
+      const foodId = `${chunkKey}-food-${i}`;
+      
+      if (foodValue > 0.6 && !collectedFood.has(foodId)) {
+        const height = heightNoise(worldX * noiseScale, worldZ * noiseScale) * heightScale;
+        newFoodItems.push({ 
+          id: foodId, 
+          position: [localX, height + 0.5, localZ] // Use local coordinates for position within the chunk
+        });
+      }
+    }
+    return newFoodItems;
+  }, [position, chunkKey, size, noiseScale, heightScale, heightNoise, foodNoise, collectedFood, mapSeed]);
+
+  useEffect(() => {
+    setFoodItems(generateFoodItems);
+  }, [generateFoodItems]);
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -92,27 +128,6 @@ const Chunk: React.FC<ChunkProps> = ({
         (x, z) => heightNoise(x * noiseScale, z * noiseScale) * heightScale
       );
       setProps(chunkProps);
-
-      // Generate food items
-      const newFoodItems: { id: string; position: [number, number, number] }[] = [];
-      const foodDensity = 5; // Adjust this value to control the number of food items
-      for (let i = 0; i < foodDensity; i++) {
-        const x = Math.random() * size;
-        const z = Math.random() * size;
-        const worldX = position[0] + x;
-        const worldZ = position[2] + z;
-        const foodValue = foodNoise(worldX * noiseScale, worldZ * noiseScale);
-        const foodId = `${chunkKey}-food-${i}`;
-        
-        if (foodValue > 0.6 && !collectedFood.has(foodId)) {
-          const height = heightNoise(worldX * noiseScale, worldZ * noiseScale) * heightScale;
-          newFoodItems.push({ 
-            id: foodId, 
-            position: [x, height + 0.5, z] 
-          });
-        }
-      }
-      setFoodItems(newFoodItems);
     };
 
     generateProps();
@@ -146,10 +161,15 @@ const Chunk: React.FC<ChunkProps> = ({
       ))}
       {foodItems.map((item, index) => (
         <Food 
+          foodValue={foodValue}
           key={`${chunkKey}-food-${index}`}
-          position={item.position}
+          position={[
+            position[0] + item.position[0],
+            item.position[1],
+            position[2] + item.position[2]
+          ]}
           onCollect={() => onFoodCollected(chunkKey, index)}
-          name={`${chunkKey}-food-${index}`}
+          name={`food/${foodValue}/${chunkKey}/${index}`}
         />
       ))}
     </>

@@ -107,6 +107,11 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
     });
 
     const handleCollisionEnter = useCallback((event: CollisionEnterPayload) => {
+        if (event.other.rigidBodyObject) {
+            //check if foodvalue < playerscore
+            //multiply size and dependent positions by score
+        console.log(event.other.rigidBodyObject.name)
+    }
         onCollisionEnter?.(event);
     }, [onCollisionEnter]);
 

@@ -168,6 +168,7 @@ const Terrain: React.FC<TerrainProps> = ({
             material={material}
             onFoodCollected={onFoodCollected}
             collectedFood={collectedFood}
+            mapSeed={mapSeed}
           />
         </RigidBody>
       ))}

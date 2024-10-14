@@ -6,9 +6,10 @@ interface FoodProps {
   position: [number, number, number];
   onCollect: () => void;
   name: string;
+  foodValue?: number;
 }
 
-const Food: React.FC<FoodProps> = ({ position, onCollect, name }) => {
+const Food: React.FC<FoodProps> = ({ position, onCollect, name, foodValue=1 }) => {
   const { scene } = useThree();
 
   return (
@@ -25,7 +26,7 @@ const Food: React.FC<FoodProps> = ({ position, onCollect, name }) => {
       }}
     >
       <mesh>
-        <sphereGeometry args={[2, 32, 32]} />
+        <sphereGeometry args={[1*foodValue, 32, 32]} />
         <meshStandardMaterial color="yellow" />
       </mesh>
     </RigidBody>
