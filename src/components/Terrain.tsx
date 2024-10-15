@@ -7,7 +7,7 @@ import { getBiome, Biome } from '../systems/biomes';
 import { useFrame } from '@react-three/fiber';
 import alea from 'alea';
 import { PropSpawner } from '../systems/PropSpawner';
-import createBlendedTerrainMaterial from '../shaders/TerrainShader'; // Import shader
+import createBlendedTerrainMaterial from '../shaders/TerrainShader';
 
 interface TerrainProps {
   chunkSize: number;
@@ -25,7 +25,9 @@ interface ChunkData {
   key: string;
   position: [number, number, number];
 }
+
 const MemoizedChunk = React.memo(Chunk);
+
 const Terrain: React.FC<TerrainProps> = ({
   chunkSize,
   chunkResolution,
@@ -38,6 +40,7 @@ const Terrain: React.FC<TerrainProps> = ({
   collectedFood,
 }) => {
   const [loadedChunks, setLoadedChunks] = useState<ChunkData[]>([]);
+  const [localCollectedFood, setLocalCollectedFood] = useState<Set<string>>(new Set());
   const prng = useMemo(() => alea(mapSeed), [mapSeed]);
   const heightNoise = useRef(createNoise2D(prng));
   const temperatureNoise = useRef(createNoise2D(prng));
@@ -50,7 +53,6 @@ const Terrain: React.FC<TerrainProps> = ({
     const size = chunkResolution * chunkResolution;
     const data = new Float32Array(size);
 
-    // Generate height data and convert it to texture
     for (let i = 0; i < size; i++) {
       const x = i % chunkResolution;
       const z = Math.floor(i / chunkResolution);
@@ -61,7 +63,7 @@ const Terrain: React.FC<TerrainProps> = ({
     const heightTexture = new THREE.DataTexture(data, chunkResolution, chunkResolution, THREE.LuminanceFormat, THREE.FloatType);
     heightTexture.needsUpdate = true;
     return heightTexture;
-  }, [chunkResolution, noiseScale, heightNoise]);
+  }, [chunkResolution, noiseScale]);
 
   const material = useMemo(() => {
     return createBlendedTerrainMaterial(heightTexture);
@@ -88,7 +90,6 @@ const Terrain: React.FC<TerrainProps> = ({
       setTimeout(() => {
         setLoadedChunks(prevChunks => {
           if (!prevChunks.some(chunk => chunk.key === chunkData.key)) {
-            //console.log(`Loaded chunk: ${chunkData.key}`);
             return [...prevChunks, chunkData];
           }
           return prevChunks;
@@ -124,17 +125,25 @@ const Terrain: React.FC<TerrainProps> = ({
       }
     }
 
-    // Unload chunks that are out of range
     setLoadedChunks(prevChunks => 
       prevChunks.filter(chunk => currentChunkKeys.has(chunk.key))
     );
 
-    // Load new chunks
     for (const chunk of newChunks) {
       await loadChunk(chunk);
     }
 
   }, [playerPosition, chunkSize, renderDistance, getChunkKey, loadedChunks, generateChunkData, loadChunk]);
+
+  const handleFoodCollected = useCallback((chunkKey: string, foodIndex: number, foodValue: number) => {
+    const foodId = `${chunkKey}/food/${foodIndex}`;
+    setLocalCollectedFood(prev => new Set(prev).add(foodId));
+    onFoodCollected(chunkKey, foodIndex, foodValue);
+  }, [onFoodCollected]);
+
+  useEffect(() => {
+    setLocalCollectedFood(new Set(collectedFood));
+  }, [collectedFood]);
 
   useEffect(() => {
     updateChunks();
@@ -166,8 +175,8 @@ const Terrain: React.FC<TerrainProps> = ({
             propSpawner={propSpawner}
             chunkKey={chunk.key}
             material={material}
-            onFoodCollected={onFoodCollected}
-            collectedFood={collectedFood}
+            onFoodCollected={handleFoodCollected}
+            collectedFood={localCollectedFood}
             mapSeed={mapSeed}
           />
         </RigidBody>

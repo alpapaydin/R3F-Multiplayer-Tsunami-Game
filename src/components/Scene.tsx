@@ -6,7 +6,7 @@ import Terrain from './Terrain';
 import PlayerCharacter from './Character/PlayerCharacter';
 import BaseCharacter from './Character/BaseCharacter';
 import * as THREE from 'three';
-import { CHUNK_SIZE, CHUNK_RES, HEIGHT_SCALE, NOISE_SCALE, RENDER_DISTANCE, ENABLE_DEBUG } from '../constants';
+import { CHUNK_SIZE, CHUNK_RES, HEIGHT_SCALE, NOISE_SCALE, RENDER_DISTANCE, ENABLE_DEBUG, CHARACTER_RADIUS_MULTIPLIER } from '../constants';
 import WSClient from '../network/WSClient';
 import Hud from './UI/Hud';
 import DebugPanel from './UI/DebugPanel';
@@ -52,7 +52,7 @@ const OtherPlayers: React.FC<{ players: {[key: string]: PlayerState}, playerId: 
         id !== playerId && player && player.position && (
           <BaseCharacter
             key={id}
-            characterRadius={1}
+            characterRadius={CHARACTER_RADIUS_MULTIPLIER}
             playerName={player.name}
             playerId={id}
             position={player.position.toArray()}
@@ -75,6 +75,7 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
   const [collectedFood, setCollectedFood] = useState<Set<string>>(new Set());
   const lastUpdatePosition = useRef(new THREE.Vector3(0, 50, 0));
   const lastUpdateTime = useRef(0);
+  const [playerScore, setPlayerScore] = useState(0);
 
   const handlePositionUpdate = useCallback((newPosition: THREE.Vector3, newVelocity: THREE.Vector3) => {
     setPlayerPosition(newPosition.clone());
@@ -93,14 +94,13 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
   }, [wsClient]);
 
   const handleFoodCollected = useCallback((chunkKey: string, foodIndex: number, foodValue: number) => {
-
-
     // Update player score
     if (playerId) {
       setOtherPlayers((prevPlayers) => {
         const currentPlayer = prevPlayers[playerId];
         if (currentPlayer) {
           const newScore = currentPlayer.score + foodValue;
+          setPlayerScore(newScore)
           if (wsClient) {
             wsClient.updateScore(newScore);
           }
@@ -286,13 +286,13 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
 
         {isPlayerSpawned && (
           <PlayerCharacter
-            characterRadius={1}
+            characterRadius={CHARACTER_RADIUS_MULTIPLIER}
             onPositionUpdate={handlePositionUpdate}
             socket={socket}
             playerId={playerId}
             playerName={playerName}
             skin={playerSkin}
-            score={0}
+            score={playerScore}
           />
         )}
         

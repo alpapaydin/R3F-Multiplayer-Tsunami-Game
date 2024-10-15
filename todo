@@ -1,0 +1,4 @@
+rigidbody mesh scale
+food id set, multi sync food, remove if exists
+excessive rerenders: in chunk when food pickup, in scene when grow
+grow animation

@@ -1,11 +1,11 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import { Biome } from '../systems/biomes';
 import { PropSpawner, PropInstance } from '../systems/PropSpawner';
 import Prop from './Props/Prop';
 import Food from './Props/Food';
-import {FOOD_DENSITY} from '../constants';
+import { FOOD_DENSITY } from '../constants';
 
 interface ChunkProps {
   position: [number, number, number];
@@ -40,22 +40,20 @@ const Chunk: React.FC<ChunkProps> = ({
   collectedFood,
   mapSeed,
 }) => {
-  const foodValue = Math.random() * (5 - 0.1) + 0.1;
   const [chunkX, _, chunkZ] = position;
   const [props, setProps] = useState<PropInstance[]>([]);
   const { scene } = useThree();
-  const [foodItems, setFoodItems] = useState<{ id: string; position: [number, number, number] }[]>([]);
-  const generateFoodItems = useMemo(() => {
+  const [foodItems, setFoodItems] = useState<{ id: string; position: [number, number, number]; value: number }[]>([]);
+
+  const generateFoodItems = useCallback(() => {
     const chunkNoise = foodNoise;
-    const newFoodItems: { id: string; position: [number, number, number] }[] = [];
-    const foodDensity = FOOD_DENSITY; // Adjust this value to control the number of food items
+    const newFoodItems: { id: string; position: [number, number, number]; value: number }[] = [];
+    const foodDensity = FOOD_DENSITY;
 
     for (let i = 0; i < foodDensity; i++) {
-      // Generate local coordinates within the chunk
       const localX = (chunkNoise(i * 0.1, 0) * 0.5 + 0.5) * size;
       const localZ = (chunkNoise(0, i * 0.1) * 0.5 + 0.5) * size;
       
-      // Calculate world coordinates
       const worldX = chunkX + localX;
       const worldZ = chunkZ + localZ;
       
@@ -64,20 +62,28 @@ const Chunk: React.FC<ChunkProps> = ({
       
       if (foodValue > 0.6 && !collectedFood.has(foodId)) {
         const height = heightNoise(worldX * noiseScale, worldZ * noiseScale) * heightScale;
+        const value = Math.floor(Math.random() * (5 - 0.1) + 0.1);
         newFoodItems.push({ 
           id: foodId, 
-          position: [localX, height + 0.5, localZ] // Use local coordinates for position within the chunk
+          position: [localX, height + 0.5, localZ],
+          value: value
         });
       }
     }
     return newFoodItems;
-  }, [position, chunkKey, size, noiseScale, heightScale, heightNoise, foodNoise, collectedFood, mapSeed]);
+  }, [chunkX, chunkZ, size, noiseScale, heightScale, heightNoise, foodNoise, chunkKey, collectedFood]);
 
   useEffect(() => {
-    setFoodItems(generateFoodItems);
+    setFoodItems(generateFoodItems());
   }, [generateFoodItems]);
 
-  
+  const handleFoodCollected = useCallback((foodIndex: number) => {
+    const foodItem = foodItems[foodIndex];
+    if (foodItem) {
+      onFoodCollected(chunkKey, foodIndex, foodItem.value);
+      setFoodItems(prevItems => prevItems.filter((_, index) => index !== foodIndex));
+    }
+  }, [foodItems, chunkKey, onFoodCollected]);
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -133,16 +139,15 @@ const Chunk: React.FC<ChunkProps> = ({
 
     generateProps();
 
-    // Cleanup function to remove food items when chunk is unmounted
     return () => {
-      foodItems.forEach((_, index) => {
-        const foodObject = scene.getObjectByName(`${chunkKey}/food/${index}`);
+      foodItems.forEach((item) => {
+        const foodObject = scene.getObjectByName(item.id);
         if (foodObject) {
           scene.remove(foodObject);
         }
       });
     };
-  }, [chunkX, chunkZ, size, getBiomeAt, heightNoise, foodNoise, noiseScale, heightScale, propSpawner, chunkKey, position, collectedFood, scene]);
+  }, [chunkX, chunkZ, size, getBiomeAt, heightNoise, foodNoise, noiseScale, heightScale, propSpawner, chunkKey, position, collectedFood, scene, foodItems]);
 
   const groupedProps = useMemo(() => {
     return props.reduce((acc, prop) => {
@@ -162,15 +167,15 @@ const Chunk: React.FC<ChunkProps> = ({
       ))}
       {foodItems.map((item, index) => (
         <Food 
-          foodValue={foodValue}
-          key={`${chunkKey}/food/${index}`}
+          key={item.id}
+          foodValue={item.value}
           position={[
             position[0] + item.position[0],
             item.position[1],
             position[2] + item.position[2]
           ]}
-          onCollect={() => onFoodCollected(chunkKey, index, foodValue)}
-          name={`${chunkKey}/food/${index}`}
+          onCollect={() => handleFoodCollected(index)}
+          name={item.id}
         />
       ))}
     </>

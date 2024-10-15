@@ -24,6 +24,7 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
   position = [0, 25, 0],
   rigidBodyRef,
   characterRadius,
+  score,
   skin,
   onCollisionEnter,
   onCollisionExit,
@@ -94,7 +95,7 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
         onCollisionExit={onCollisionExit}
       >
         <mesh ref={meshRef} castShadow>
-          <sphereGeometry args={[characterRadius, 32, 32]} />
+          <sphereGeometry args={[characterRadius * Math.max(score, 1), 32, 32]} />
           <primitive object={shaderMaterial} attach="material" />
         </mesh>
       </RigidBody>
