@@ -6,6 +6,7 @@ import * as THREE from 'three';
 interface NameTagProps {
   name: string | null;
   messages: { text: string; timestamp: number }[];
+  playerScore: number;
 }
 
 interface VisibleMessage {
@@ -15,7 +16,7 @@ interface VisibleMessage {
   y: number;
 }
 
-const NameTag = forwardRef<THREE.Group, NameTagProps>(({ name, messages }, ref) => {
+const NameTag = forwardRef<THREE.Group, NameTagProps>(({ name, messages, playerScore }, ref) => {
   const [visibleMessages, setVisibleMessages] = useState<VisibleMessage[]>([]);
 
   useEffect(() => {
@@ -48,7 +49,7 @@ const NameTag = forwardRef<THREE.Group, NameTagProps>(({ name, messages }, ref) 
         anchorY="bottom"
         outlineColor="black"
         outlineWidth={0.05}
-        position={[0, 0.3, 0]}
+        position={[0, 0.3 + playerScore, 0]}
       >
         {name}
       </Text>
@@ -61,7 +62,7 @@ const NameTag = forwardRef<THREE.Group, NameTagProps>(({ name, messages }, ref) 
           anchorY="bottom"
           outlineColor="black"
           outlineWidth={0.05}
-          position={[0, 1 + msg.y, 0]}
+          position={[0, 1 + msg.y + playerScore, 0]}
           maxWidth={7}
           overflowWrap="break-word"
           textAlign="center"

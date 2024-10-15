@@ -5,6 +5,7 @@ import * as THREE from 'three';
 const MOUSE_SENSITIVITY = 0.002;
 const MAX_POLAR_ANGLE = Math.PI * 0.4;
 const SMOOTHING_FACTOR = 0.1;
+const BASE_CAMERA_OFFSET = new THREE.Vector3(0, 5, 10);
 
 interface Rotation {
     x: number;
@@ -69,15 +70,16 @@ export const useCameraControls = () => {
         };
     }, [gl, handleMouseMove, lockPointer, unlockPointer]);
 
-    const updateCamera = useCallback((characterPosition: THREE.Vector3) => {
-        const cameraOffset = new THREE.Vector3(0, 5, 10);
+    const updateCamera = useCallback((characterPosition: THREE.Vector3, characterRadius: number) => {
+        const sizeScale = Math.max(characterRadius, 1);
+        const cameraOffset = BASE_CAMERA_OFFSET.clone().multiplyScalar(Math.sqrt(sizeScale));
         cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation.y);
         targetPosition.current.copy(characterPosition).add(cameraOffset);
 
         const forward = new THREE.Vector3(-Math.sin(rotation.y), 0, -Math.cos(rotation.y));
         targetLookAt.current.copy(characterPosition);
-        targetLookAt.current.y += Math.sin(rotation.x) * 10;
-        targetLookAt.current.add(forward.multiplyScalar(Math.cos(rotation.x) * 10));
+        targetLookAt.current.y += Math.sin(rotation.x) * 10 * Math.sqrt(sizeScale);
+        targetLookAt.current.add(forward.multiplyScalar(Math.cos(rotation.x) * 10 * Math.sqrt(sizeScale)));
     }, [rotation]);
 
     useFrame(() => {

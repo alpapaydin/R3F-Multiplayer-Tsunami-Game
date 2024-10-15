@@ -1,7 +1,7 @@
 import React, { useRef, useMemo, useCallback, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { RigidBody, RapierRigidBody, CollisionEnterPayload, CollisionExitPayload, interactionGroups } from '@react-three/rapier';
+import { RigidBody, RapierRigidBody, CollisionEnterPayload, CollisionExitPayload, interactionGroups, BallCollider } from '@react-three/rapier';
 import NameTag from '../UI/NameTag';
 import { skins } from './skins';
 
@@ -50,6 +50,9 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
   const characterPosition = useMemo(() => new THREE.Vector3(...position), [position]);
   const nameTagOffset = useMemo(() => new THREE.Vector3(0, 1.5, 0), []);
   const [messages, setMessages] = useState<{ text: string; timestamp: number }[]>([]);
+  
+  const currentRadius = characterRadius * Math.max(score, 1);
+
   const updatePosition = useCallback((delta: number) => {
     if (!ref.current) return;
     const translation = ref.current.translation();
@@ -86,20 +89,20 @@ const BaseCharacter: React.FC<BaseCharacterProps> = ({
         name="player"
         collisionGroups={interactionGroups(1, 2)}
         ref={ref}
-        colliders="ball"
         gravityScale={5}
         position={characterPosition}
-        linearDamping={0.95}
-        angularDamping={0.95}
+        linearDamping={0.15}
+        angularDamping={0.15}
         onCollisionEnter={onCollisionEnter}
         onCollisionExit={onCollisionExit}
       >
+        <BallCollider args={[currentRadius]} />
         <mesh ref={meshRef} castShadow>
-          <sphereGeometry args={[characterRadius * Math.max(score, 1), 32, 32]} />
+          <sphereGeometry args={[currentRadius, 32, 32]} />
           <primitive object={shaderMaterial} attach="material" />
         </mesh>
       </RigidBody>
-      <NameTag ref={nameTagRef} name={playerName} messages={messages} />
+      <NameTag ref={nameTagRef} name={playerName} messages={messages} playerScore={score} />
     </>
   );
 };

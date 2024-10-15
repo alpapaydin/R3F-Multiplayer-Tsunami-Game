@@ -7,9 +7,9 @@ import { useCameraControls } from '../CameraControls';
 import { RapierRigidBody } from '@react-three/rapier';
 import BaseCharacter from './BaseCharacter';
 
-const MOVE_FORCE = 500;
-const JUMP_FORCE = 250;
-const MAX_VELOCITY = 70;
+const BASE_MOVE_FORCE = 1000;
+const BASE_JUMP_FORCE = 250;
+const BASE_MAX_VELOCITY = 70;
 const DAMPING = 0.95;
 
 interface PlayerCharacterProps {
@@ -41,9 +41,15 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
     const keys = useKeyboard();
     const { rotation, updateCamera } = useCameraControls();
     const moveDirection = useMemo(() => new THREE.Vector3(), []);
-    const jumpDirection = useMemo(() => vec3({ x: 0, y: JUMP_FORCE, z: 0 }), []);
     const { rapier, world } = useRapier();
     const [isGrounded, setIsGrounded] = useState(false);
+
+    const sizeScale = Math.max(score, 1);
+    const moveForce = BASE_MOVE_FORCE * sizeScale;
+    const jumpForce = BASE_JUMP_FORCE * sizeScale;
+    const maxVelocity = BASE_MAX_VELOCITY * sizeScale;
+
+    const jumpDirection = useMemo(() => vec3({ x: 0, y: jumpForce, z: 0 }), [jumpForce]);
 
     const updatePhysics = useCallback((delta: number) => {
         if (!rigidBodyRef.current) return;
@@ -55,7 +61,7 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
         if (keys.s) moveDirection.z += 1;
         if (keys.a) moveDirection.x -= 1;
         if (keys.d) moveDirection.x += 1;
-        moveDirection.normalize().multiplyScalar(MOVE_FORCE * delta);
+        moveDirection.normalize().multiplyScalar(moveForce * delta);
         moveDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotation.y);
 
         // Apply move force
@@ -70,10 +76,10 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
 
         // Limit max velocity
         const speed = new THREE.Vector3(currentVel.x, 0, currentVel.z).length();
-        if (speed > MAX_VELOCITY) {
+        if (speed > maxVelocity) {
             const limitedVel = new THREE.Vector3(currentVel.x, 0, currentVel.z)
                 .normalize()
-                .multiplyScalar(MAX_VELOCITY);
+                .multiplyScalar(maxVelocity);
             rigidBody.setLinvel(
                 { x: limitedVel.x, y: currentVel.y, z: limitedVel.z },
                 true
@@ -82,7 +88,7 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
 
         // Grounded check using raycasting
         const position = rigidBody.translation();
-        const jumpRay = new rapier.Ray(position, { x: 0, y: -1, z: 0 });
+        const jumpRay = new rapier.Ray(position, { x: 0, y: -sizeScale, z: 0 });
         const hit = world.castRay(jumpRay, characterRadius + 0.1, true, undefined, interactionGroups(1));
         setIsGrounded(!!hit);
 
@@ -93,14 +99,14 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
 
         // Update position and camera
         const translation = rigidBody.translation();
-        updateCamera(new THREE.Vector3(translation.x, translation.y, translation.z));
+        updateCamera(new THREE.Vector3(translation.x, translation.y, translation.z), characterRadius * sizeScale);
         
         // Call onPositionUpdate with both position and velocity
         onPositionUpdate(
             new THREE.Vector3(translation.x, translation.y, translation.z),
             new THREE.Vector3(currentVel.x, currentVel.y, currentVel.z)
         );
-    }, [keys, rotation.y, moveDirection, jumpDirection, isGrounded, onPositionUpdate, updateCamera, rapier, world, characterRadius]);
+    }, [keys, rotation.y, moveDirection, jumpDirection, isGrounded, onPositionUpdate, updateCamera, rapier, world, characterRadius, moveForce, maxVelocity, sizeScale]);
 
     useFrame((_, delta) => {
         updatePhysics(delta);
@@ -110,7 +116,7 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
         if (event.other.rigidBodyObject) {
             //check if foodvalue < playerscore
             //multiply size and dependent positions by score
-    }
+        }
         onCollisionEnter?.(event);
     }, [onCollisionEnter]);
 
