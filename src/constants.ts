@@ -6,4 +6,4 @@ export const NOISE_SCALE = 0.03
 export const RENDER_DISTANCE = 2
 export const ENABLE_DEBUG = true
 export const FOOD_DENSITY = 20
-export const CHARACTER_RADIUS_MULTIPLIER = 1.0
+export const SCORE_EFFECT_MULTIPLIER = 0.1

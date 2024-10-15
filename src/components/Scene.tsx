@@ -6,7 +6,7 @@ import Terrain from './Terrain';
 import PlayerCharacter from './Character/PlayerCharacter';
 import BaseCharacter from './Character/BaseCharacter';
 import * as THREE from 'three';
-import { CHUNK_SIZE, CHUNK_RES, HEIGHT_SCALE, NOISE_SCALE, RENDER_DISTANCE, ENABLE_DEBUG, CHARACTER_RADIUS_MULTIPLIER } from '../constants';
+import { CHUNK_SIZE, CHUNK_RES, HEIGHT_SCALE, NOISE_SCALE, RENDER_DISTANCE, ENABLE_DEBUG } from '../constants';
 import WSClient from '../network/WSClient';
 import Hud from './UI/Hud';
 import DebugPanel from './UI/DebugPanel';
@@ -52,7 +52,7 @@ const OtherPlayers: React.FC<{ players: {[key: string]: PlayerState}, playerId: 
         id !== playerId && player && player.position && (
           <BaseCharacter
             key={id}
-            characterRadius={CHARACTER_RADIUS_MULTIPLIER}
+            characterRadius={1}
             playerName={player.name}
             playerId={id}
             position={player.position.toArray()}
@@ -286,7 +286,7 @@ const Scene: React.FC<SceneProps> = ({ socket, playerId, mapSeed, playerName, pl
 
         {isPlayerSpawned && (
           <PlayerCharacter
-            characterRadius={CHARACTER_RADIUS_MULTIPLIER}
+            characterRadius={1}
             onPositionUpdate={handlePositionUpdate}
             socket={socket}
             playerId={playerId}

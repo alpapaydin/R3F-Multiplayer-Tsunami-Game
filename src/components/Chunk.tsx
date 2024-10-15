@@ -77,20 +77,21 @@ const Chunk: React.FC<ChunkProps> = ({
     setFoodItems(generateFoodItems());
   }, [generateFoodItems]);
 
-  const handleFoodCollected = useCallback((foodIndex: number) => {
-    const foodItem = foodItems[foodIndex];
+  const handleFoodCollected = useCallback((foodId: string) => {
+    setFoodItems(prevItems => prevItems.filter(item => item.id !== foodId));
+    const foodIndex = parseInt(foodId.split('/')[2]);
+    const foodItem = foodItems.find(item => item.id === foodId);
     if (foodItem) {
       onFoodCollected(chunkKey, foodIndex, foodItem.value);
-      setFoodItems(prevItems => prevItems.filter((_, index) => index !== foodIndex));
     }
-  }, [foodItems, chunkKey, onFoodCollected]);
+  }, [chunkKey, onFoodCollected, foodItems]);
 
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
     const vertices: number[] = [];
     const colors: number[] = [];
     const indices: number[] = [];
-
+    console.log("GEOMETRİ")
     for (let i = 0; i <= resolution; i++) {
       for (let j = 0; j <= resolution; j++) {
         const x = (i / resolution) * size;
@@ -165,7 +166,7 @@ const Chunk: React.FC<ChunkProps> = ({
       {Object.entries(groupedProps).map(([type, instances]) => (
         <Prop key={`${chunkKey}-${type}`} type={type} instances={instances} />
       ))}
-      {foodItems.map((item, index) => (
+      {foodItems.map((item) => (
         <Food 
           key={item.id}
           foodValue={item.value}
@@ -174,7 +175,7 @@ const Chunk: React.FC<ChunkProps> = ({
             item.position[1],
             position[2] + item.position[2]
           ]}
-          onCollect={() => handleFoodCollected(index)}
+          onCollect={() => handleFoodCollected(item.id)}
           name={item.id}
         />
       ))}
@@ -182,4 +183,4 @@ const Chunk: React.FC<ChunkProps> = ({
   );
 };
 
-export default Chunk;
+export default React.memo(Chunk);

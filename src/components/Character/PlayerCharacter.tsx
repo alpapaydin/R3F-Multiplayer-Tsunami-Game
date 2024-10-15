@@ -6,6 +6,7 @@ import { useKeyboard } from '../../hooks/useKeyboard';
 import { useCameraControls } from '../CameraControls';
 import { RapierRigidBody } from '@react-three/rapier';
 import BaseCharacter from './BaseCharacter';
+import { SCORE_EFFECT_MULTIPLIER } from '../../constants';
 
 const BASE_MOVE_FORCE = 2000;
 const BASE_JUMP_FORCE = 250;
@@ -44,8 +45,8 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
     const { rapier, world } = useRapier();
     const [isGrounded, setIsGrounded] = useState(false);
 
-    const sizeScale = Math.max(score, 1);
-    const moveForce = BASE_MOVE_FORCE * sizeScale;
+    const sizeScale = Math.max(score * SCORE_EFFECT_MULTIPLIER, 1);
+    const moveForce = BASE_MOVE_FORCE * Math.pow(sizeScale,2);
     const jumpForce = BASE_JUMP_FORCE * sizeScale;
     const maxVelocity = BASE_MAX_VELOCITY * sizeScale;
 
@@ -127,7 +128,7 @@ const PlayerCharacter: React.FC<PlayerCharacterProps> = ({
     return (
         <BaseCharacter
           skin={skin}
-          score={score}
+          score={sizeScale}
           characterRadius={characterRadius}
           rigidBodyRef={rigidBodyRef}
           playerId={playerId}
