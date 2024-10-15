@@ -7,7 +7,7 @@ import { useCameraControls } from '../CameraControls';
 import { RapierRigidBody } from '@react-three/rapier';
 import BaseCharacter from './BaseCharacter';
 
-const BASE_MOVE_FORCE = 1000;
+const BASE_MOVE_FORCE = 2000;
 const BASE_JUMP_FORCE = 250;
 const BASE_MAX_VELOCITY = 70;
 const DAMPING = 0.95;
